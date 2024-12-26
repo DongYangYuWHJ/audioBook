@@ -1,77 +1,119 @@
 package com.example.myapplication;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.text.method.ScrollingMovementMethod;
+import android.widget.Button;
+import android.widget.ScrollView;
+import android.widget.TextView;
 
-import com.google.android.material.snackbar.Snackbar;
-
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.view.View;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
-import androidx.navigation.ui.AppBarConfiguration;
-import androidx.navigation.ui.NavigationUI;
+import org.mozilla.universalchardet.UniversalDetector;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
-import com.example.myapplication.databinding.ActivityMainBinding;
-
-import android.view.Menu;
-import android.view.MenuItem;
 
 public class MainActivity extends AppCompatActivity {
 
-    private AppBarConfiguration appBarConfiguration;
-    private ActivityMainBinding binding;
+    private static final int PICK_TXT_FILE = 1; // 请求代码
+    private TextView txtContent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
+        Button btnSelectFile = findViewById(R.id.btnSelectFile);
+        txtContent = findViewById(R.id.txtContent);
+        txtContent.setMovementMethod(new ScrollingMovementMethod());
 
-        setSupportActionBar(binding.toolbar);
+        btnSelectFile.setOnClickListener(v -> openFilePicker());
+    }
 
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
-        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
-
-        binding.fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAnchorView(R.id.fab)
-                        .setAction("Action", null).show();
-            }
-        });
+    // 打开文件选择器
+    private void openFilePicker() {
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("text/plain"); // 限制为TXT文件
+        startActivityForResult(Intent.createChooser(intent, "选择TXT文件"), PICK_TXT_FILE);
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PICK_TXT_FILE && resultCode == RESULT_OK && data != null) {
+            Uri uri = data.getData(); // 获取用户选择的文件URI
+            readTextFileWithEncoding(uri);
         }
-
-        return super.onOptionsItemSelected(item);
     }
 
-    @Override
-    public boolean onSupportNavigateUp() {
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        return NavigationUI.navigateUp(navController, appBarConfiguration)
-                || super.onSupportNavigateUp();
+    // 读取文件内容
+//    private void readTextFile(Uri uri) {
+//        try {
+//            InputStream inputStream = getContentResolver().openInputStream(uri);
+//            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+//            StringBuilder stringBuilder = new StringBuilder();
+//            String line;
+//
+//            while ((line = reader.readLine()) != null) {
+//                stringBuilder.append(line).append("\n");
+//            }
+//            inputStream.close();
+//
+//            // 显示文件内容
+//            txtContent.setText(stringBuilder.toString());
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            txtContent.setText("读取文件时出错！");
+//        }
+//    }
+
+
+    private void readTextFileWithEncoding(Uri uri) {
+        try {
+            InputStream inputStream = getContentResolver().openInputStream(uri);
+
+            // 检测编码
+            byte[] buffer = new byte[4096];
+            int nread;
+            UniversalDetector detector = new UniversalDetector(null);
+
+            while ((nread = inputStream.read(buffer)) > 0 && !detector.isDone()) {
+                detector.handleData(buffer, 0, nread);
+            }
+            detector.dataEnd();
+
+            String encoding = detector.getDetectedCharset(); // 检测到的编码
+            inputStream.close();
+
+            if (encoding == null) {
+                encoding = "UTF-8"; // 默认回退编码
+            }
+
+            // 按检测到的编码读取文件
+            inputStream = getContentResolver().openInputStream(uri);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, encoding));
+            StringBuilder stringBuilder = new StringBuilder();
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                stringBuilder.append(line).append("\n");
+            }
+            inputStream.close();
+
+            // 显示文件内容
+            txtContent.setText(stringBuilder.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            txtContent.setText("读取文件时出错！");
+        }
     }
+
 }
