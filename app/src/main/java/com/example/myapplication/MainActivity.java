@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -12,13 +13,13 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
 import org.mozilla.universalchardet.UniversalDetector;
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -31,11 +32,27 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Button btnSelectFile = findViewById(R.id.btnSelectFile);
+        Button buttonReadFile = findViewById(R.id.buttonReadFile);
+        Button buttonSelectAlreadyReadNovel = findViewById(R.id.buttonReadStoredNovel);
+        ScrollView alreadyReadNovelSelectionList = findViewById(R.id.read_novel_selection_list);
+        Button buttonSelectionNovel1 = findViewById(R.id.button_test);
+
         txtContent = findViewById(R.id.txtContent);
         txtContent.setMovementMethod(new ScrollingMovementMethod());
 
-        btnSelectFile.setOnClickListener(v -> openFilePicker());
+        buttonReadFile.setOnClickListener(v -> openFilePicker());
+        buttonSelectAlreadyReadNovel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                selectFromAlreadyReadNovels((String) buttonSelectionNovel1.getText());
+            }
+        });
+        buttonSelectAlreadyReadNovel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                alreadyReadNovelSelectionList.setVisibility(View.VISIBLE);
+            }
+        });
     }
 
     // 打开文件选择器
@@ -54,28 +71,47 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // 读取文件内容
-//    private void readTextFile(Uri uri) {
-//        try {
-//            InputStream inputStream = getContentResolver().openInputStream(uri);
-//            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-//            StringBuilder stringBuilder = new StringBuilder();
-//            String line;
-//
-//            while ((line = reader.readLine()) != null) {
-//                stringBuilder.append(line).append("\n");
-//            }
-//            inputStream.close();
-//
-//            // 显示文件内容
-//            txtContent.setText(stringBuilder.toString());
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            txtContent.setText("读取文件时出错！");
-//        }
-//    }
+    /**
+     * 录入文本至app内文件夹
+     * @param fileName
+     * @param content
+     */
+    private void saveFileToInternalStorage(String fileName, String content) {
+        try {
+            FileOutputStream fos = openFileOutput(fileName, MODE_PRIVATE);
+            fos.write(content.getBytes());
+            fos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 读取已录入的文件
+     */
+    private String loadFileFromInternalStorage(String fileName) {
+        try {
+            FileInputStream fis = openFileInput(fileName);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(fis));
+            StringBuilder stringBuilder = new StringBuilder();
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                stringBuilder.append(line).append("\n");
+            }
+            fis.close();
+            return stringBuilder.toString();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
 
 
+    /**
+     * 读取文本内容
+     * @param uri
+     */
     private void readTextFileWithEncoding(Uri uri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);
@@ -108,11 +144,25 @@ public class MainActivity extends AppCompatActivity {
             }
             inputStream.close();
 
+            String fileName = "mybook1.txt"; // 自定义文件名
+            saveFileToInternalStorage(fileName, stringBuilder.toString());
+
+
             // 显示文件内容
             txtContent.setText(stringBuilder.toString());
         } catch (Exception e) {
             e.printStackTrace();
             txtContent.setText("读取文件时出错！");
+        }
+    }
+
+    /**
+     * 包装一下
+     */
+    public void selectFromAlreadyReadNovels(String fileName){
+        String savedContent = loadFileFromInternalStorage(fileName);
+        if (savedContent != null) {
+            txtContent.setText(savedContent);
         }
     }
 
