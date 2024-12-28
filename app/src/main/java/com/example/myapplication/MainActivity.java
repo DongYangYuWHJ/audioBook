@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ScrollView;
@@ -36,14 +37,17 @@ public class MainActivity extends AppCompatActivity {
         Button buttonSelectAlreadyReadNovel = findViewById(R.id.buttonReadStoredNovel);
         ScrollView alreadyReadNovelSelectionList = findViewById(R.id.read_novel_selection_list);
         Button buttonSelectionNovel1 = findViewById(R.id.button_test);
+        View pageNovel = findViewById(R.id.read_novel_page);
 
         txtContent = findViewById(R.id.txtContent);
         txtContent.setMovementMethod(new ScrollingMovementMethod());
 
         buttonReadFile.setOnClickListener(v -> openFilePicker());
-        buttonSelectAlreadyReadNovel.setOnClickListener(new View.OnClickListener() {
+        buttonSelectionNovel1.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                alreadyReadNovelSelectionList.setVisibility(View.INVISIBLE);
+                pageNovel.setVisibility(View.VISIBLE);
                 selectFromAlreadyReadNovels((String) buttonSelectionNovel1.getText());
             }
         });
@@ -51,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 alreadyReadNovelSelectionList.setVisibility(View.VISIBLE);
+                pageNovel.setVisibility(View.INVISIBLE);
             }
         });
     }
@@ -84,6 +89,8 @@ public class MainActivity extends AppCompatActivity {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        Log.d("donghuiFile", "File stored at: " + getFilesDir().getAbsolutePath());
     }
 
     /**
