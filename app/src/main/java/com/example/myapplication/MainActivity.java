@@ -12,13 +12,17 @@ import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 
 import org.mozilla.universalchardet.UniversalDetector;
 
@@ -27,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int PICK_TXT_FILE = 1; // 请求代码
     private TextView txtContent;
+    ArrayList<TitleViewNovelRecorded> novelTitles;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
         ScrollView alreadyReadNovelSelectionList = findViewById(R.id.read_novel_selection_list);
         Button buttonSelectionNovel1 = findViewById(R.id.button_test);
         View pageNovel = findViewById(R.id.read_novel_page);
+        RecyclerView recyclerView = findViewById(R.id.recycler_view);
 
         txtContent = findViewById(R.id.txtContent);
         txtContent.setMovementMethod(new ScrollingMovementMethod());
@@ -58,6 +64,13 @@ public class MainActivity extends AppCompatActivity {
                 pageNovel.setVisibility(View.INVISIBLE);
             }
         });
+        novelTitles = new ArrayList<>();
+        setUpNovelTitles();
+
+        Adapter_TitleViewNovelRecorded adapter = new Adapter_TitleViewNovelRecorded(this, novelTitles);
+        recyclerView.setAdapter(adapter);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
     }
 
     // 打开文件选择器
@@ -170,6 +183,23 @@ public class MainActivity extends AppCompatActivity {
         String savedContent = loadFileFromInternalStorage(fileName);
         if (savedContent != null) {
             txtContent.setText(savedContent);
+        }
+    }
+
+    /**
+     * 把内部储存的都setup成novel titles
+     */
+    void setUpNovelTitles(){
+        File internalDir = getFilesDir();
+
+        if (internalDir != null && internalDir.isDirectory()) {
+            // 遍历内部存储中的文件
+            for (File file : internalDir.listFiles()) {
+                if (file.isFile() && file.getName().endsWith(".txt")) {
+                    // 添加文件名（包含扩展名）
+                    novelTitles.add(new TitleViewNovelRecorded(file.getName()));
+                }
+            }
         }
     }
 
