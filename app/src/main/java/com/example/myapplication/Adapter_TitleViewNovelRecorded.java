@@ -1,9 +1,11 @@
 package com.example.myapplication;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -15,10 +17,13 @@ public class Adapter_TitleViewNovelRecorded extends
         RecyclerView.Adapter<Adapter_TitleViewNovelRecorded.MyViewHolder> {
     Context context;
     ArrayList<TitleViewNovelRecorded> titles;
+    private OnButtonClickListener listener;
 
-    public Adapter_TitleViewNovelRecorded(Context context, ArrayList<TitleViewNovelRecorded> titles) {
+    public Adapter_TitleViewNovelRecorded(Context context, ArrayList<TitleViewNovelRecorded> titles,
+                                          OnButtonClickListener listener) {
         this.context = context;
         this.titles = titles;
+        this.listener = listener;
     }
 
     @NonNull
@@ -34,6 +39,7 @@ public class Adapter_TitleViewNovelRecorded extends
     public void onBindViewHolder(@NonNull Adapter_TitleViewNovelRecorded.MyViewHolder holder, int position) {
         //assign value to each row
         holder.title.setText(titles.get(position).getTitle());
+        holder.bind(titles.get(position).getTitle(), listener);
     }
 
     @Override
@@ -42,14 +48,32 @@ public class Adapter_TitleViewNovelRecorded extends
         return titles.size();
     }
 
+    // 更新数据
+    public void updateData(ArrayList<TitleViewNovelRecorded> newTitles) {
+        titles = newTitles;
+        Log.d("donghuiAdapter", "??" + newTitles.size());
+        for(int i = 0; i < titles.size(); i++){
+            Log.d("donghuiAdapter", "" + titles.get(i));
+        }
+        notifyDataSetChanged();
+    }
+
     public static class MyViewHolder extends RecyclerView.ViewHolder{
         //similar to onCreate:
         //grab views from row layout
-        TextView title;
+        Button title;
         public MyViewHolder(@NonNull View itemView) {
             super(itemView);
 
             title = itemView.findViewById(R.id.title);
+        }
+        public void bind(String fileName, OnButtonClickListener listener){
+            title.setText(fileName);
+            title.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onButtonClick(fileName);
+                }
+            });
         }
     }
 }

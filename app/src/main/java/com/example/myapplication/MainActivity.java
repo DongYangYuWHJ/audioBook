@@ -7,10 +7,13 @@ import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -27,11 +30,15 @@ import java.util.ArrayList;
 import org.mozilla.universalchardet.UniversalDetector;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements OnButtonClickListener {
 
     private static final int PICK_TXT_FILE = 1; // 请求代码
     private TextView txtContent;
     ArrayList<TitleViewNovelRecorded> novelTitles;
+    Adapter_TitleViewNovelRecorded adapter;
+    private EditText textNovelTitleForInput;
+    RecyclerView recyclerView;
+    View pageNovel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,38 +47,52 @@ public class MainActivity extends AppCompatActivity {
 
         Button buttonReadFile = findViewById(R.id.buttonReadFile);
         Button buttonSelectAlreadyReadNovel = findViewById(R.id.buttonReadStoredNovel);
-        ScrollView alreadyReadNovelSelectionList = findViewById(R.id.read_novel_selection_list);
+//        ScrollView alreadyReadNovelSelectionList = findViewById(R.id.read_novel_selection_list);
         Button buttonSelectionNovel1 = findViewById(R.id.button_test);
-        View pageNovel = findViewById(R.id.read_novel_page);
-        RecyclerView recyclerView = findViewById(R.id.recycler_view);
+        pageNovel = findViewById(R.id.read_novel_page);
+        recyclerView = findViewById(R.id.recycler_view);
+        Button buttonNovelTitleForInput = findViewById(R.id.button_novel_title_for_input);
+        View layoutNovelTitleForInput = findViewById(R.id.layout_novel_title_for_input);
+        textNovelTitleForInput = findViewById(R.id.novel_title_for_input);
 
         txtContent = findViewById(R.id.txtContent);
         txtContent.setMovementMethod(new ScrollingMovementMethod());
 
-        buttonReadFile.setOnClickListener(v -> openFilePicker());
-        buttonSelectionNovel1.setOnClickListener(new View.OnClickListener() {
+        buttonReadFile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                alreadyReadNovelSelectionList.setVisibility(View.INVISIBLE);
-                pageNovel.setVisibility(View.VISIBLE);
-                selectFromAlreadyReadNovels((String) buttonSelectionNovel1.getText());
+                layoutNovelTitleForInput.setVisibility(View.VISIBLE);
             }
         });
+        buttonNovelTitleForInput.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openFilePicker();
+                layoutNovelTitleForInput.setVisibility(View.INVISIBLE);
+            }
+        });
+//        buttonSelectionNovel1.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                recyclerView.setVisibility(View.INVISIBLE);
+//                pageNovel.setVisibility(View.VISIBLE);
+//                selectFromAlreadyReadNovels((String) buttonSelectionNovel1.getText());
+//            }
+//        });
         buttonSelectAlreadyReadNovel.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                alreadyReadNovelSelectionList.setVisibility(View.VISIBLE);
+                recyclerView.setVisibility(View.VISIBLE);
                 pageNovel.setVisibility(View.INVISIBLE);
             }
         });
         novelTitles = new ArrayList<>();
         setUpNovelTitles();
-
-        Adapter_TitleViewNovelRecorded adapter = new Adapter_TitleViewNovelRecorded(this, novelTitles);
+        adapter = new Adapter_TitleViewNovelRecorded(this, novelTitles, this);
         recyclerView.setAdapter(adapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-
     }
+
 
     // 打开文件选择器
     private void openFilePicker() {
@@ -80,14 +101,49 @@ public class MainActivity extends AppCompatActivity {
         startActivityForResult(Intent.createChooser(intent, "选择TXT文件"), PICK_TXT_FILE);
     }
 
+    public void alreadyInputNovelButtonClicker(String title){
+        recyclerView.setVisibility(View.INVISIBLE);
+        pageNovel.setVisibility(View.VISIBLE);
+        selectFromAlreadyReadNovels(title);
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PICK_TXT_FILE && resultCode == RESULT_OK && data != null) {
             Uri uri = data.getData(); // 获取用户选择的文件URI
-            readTextFileWithEncoding(uri);
+            String novelTitle = String.valueOf(textNovelTitleForInput.getText());
+            readTextFileWithEncoding(uri, novelTitle);
+//            showFileNameInputDialog(uri);
+            // 更新小说标题
+            setUpNovelTitles(); // 重新加载标题列表
+            Log.d("donghuiTitles", "" + novelTitles.size());
+            adapter.updateData(novelTitles);
         }
     }
+
+    protected void showFileNameInputDialog(Uri fileUri) {
+        // 创建一个 EditText 让用户输入文件名
+        EditText novelTitleForInput = new EditText(this);
+        novelTitleForInput.setHint("请输入文件名（不含扩展名）");
+
+        new AlertDialog.Builder(this)
+                .setTitle("保存文件")
+                .setMessage("请输入文件名")
+                .setView(novelTitleForInput) // 添加输入框
+                .setPositiveButton("保存", (dialog, which) -> {
+                    String fileName = novelTitleForInput.getText().toString().trim();
+                    if (!fileName.isEmpty()) {
+                        // 保存文件到内部存储
+                        readTextFileWithEncoding(fileUri, fileName);
+                    } else {
+                        Toast.makeText(this, "文件名不能为空", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
 
     /**
      * 录入文本至app内文件夹
@@ -132,7 +188,7 @@ public class MainActivity extends AppCompatActivity {
      * 读取文本内容
      * @param uri
      */
-    private void readTextFileWithEncoding(Uri uri) {
+    private void readTextFileWithEncoding(Uri uri, String novelTitle) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);
 
@@ -164,12 +220,12 @@ public class MainActivity extends AppCompatActivity {
             }
             inputStream.close();
 
-            String fileName = "mybook1.txt"; // 自定义文件名
+            String fileName = novelTitle+".txt"; // 自定义文件名
             saveFileToInternalStorage(fileName, stringBuilder.toString());
 
 
             // 显示文件内容
-            txtContent.setText(stringBuilder.toString());
+//            txtContent.setText(stringBuilder.toString());
         } catch (Exception e) {
             e.printStackTrace();
             txtContent.setText("读取文件时出错！");
@@ -194,6 +250,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (internalDir != null && internalDir.isDirectory()) {
             // 遍历内部存储中的文件
+            novelTitles.clear();
             for (File file : internalDir.listFiles()) {
                 if (file.isFile() && file.getName().endsWith(".txt")) {
                     // 添加文件名（包含扩展名）
@@ -203,4 +260,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public void onButtonClick(String fileName) {
+        // 处理按钮点击事件
+        Toast.makeText(this, "Button clicked for: " + fileName, Toast.LENGTH_SHORT).show();
+        // 调用 MainActivity 的其他方法
+        alreadyInputNovelButtonClicker(fileName);
+    }
 }
