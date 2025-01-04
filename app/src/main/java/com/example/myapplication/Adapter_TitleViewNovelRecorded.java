@@ -51,10 +51,6 @@ public class Adapter_TitleViewNovelRecorded extends
     // 更新数据
     public void updateData(ArrayList<TitleViewNovelRecorded> newTitles) {
         titles = newTitles;
-        Log.d("donghuiAdapter", "??" + newTitles.size());
-        for(int i = 0; i < titles.size(); i++){
-            Log.d("donghuiAdapter", "" + titles.get(i));
-        }
         notifyDataSetChanged();
     }
 

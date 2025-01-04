@@ -1,6 +1,7 @@
 package com.example.myapplication;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
@@ -39,6 +40,7 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
     private EditText textNovelTitleForInput;
     RecyclerView recyclerView;
     View pageNovel;
+    TextView currentNovelTitle;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,13 +49,12 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
 
         Button buttonReadFile = findViewById(R.id.buttonReadFile);
         Button buttonSelectAlreadyReadNovel = findViewById(R.id.buttonReadStoredNovel);
-//        ScrollView alreadyReadNovelSelectionList = findViewById(R.id.read_novel_selection_list);
-        Button buttonSelectionNovel1 = findViewById(R.id.button_test);
         pageNovel = findViewById(R.id.read_novel_page);
         recyclerView = findViewById(R.id.recycler_view);
         Button buttonNovelTitleForInput = findViewById(R.id.button_novel_title_for_input);
         View layoutNovelTitleForInput = findViewById(R.id.layout_novel_title_for_input);
         textNovelTitleForInput = findViewById(R.id.novel_title_for_input);
+        currentNovelTitle = findViewById(R.id.current_novel_title);
 
         txtContent = findViewById(R.id.txtContent);
         txtContent.setMovementMethod(new ScrollingMovementMethod());
@@ -86,6 +87,13 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
                 pageNovel.setVisibility(View.INVISIBLE);
             }
         });
+        txtContent.getViewTreeObserver().addOnScrollChangedListener(() -> {
+            int scrollY = txtContent.getScrollY(); // 获取当前滚动位置
+            String novelTitle = (String)currentNovelTitle.getText();
+            Log.d("donghuiTitle", novelTitle);
+            Log.d("donghuiTitle", ""+currentNovelTitle.getVisibility());
+            saveScrollPosition(novelTitle, scrollY); // 保存滚动位置
+        });
         novelTitles = new ArrayList<>();
         setUpNovelTitles();
         adapter = new Adapter_TitleViewNovelRecorded(this, novelTitles, this);
@@ -117,7 +125,6 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
 //            showFileNameInputDialog(uri);
             // 更新小说标题
             setUpNovelTitles(); // 重新加载标题列表
-            Log.d("donghuiTitles", "" + novelTitles.size());
             adapter.updateData(novelTitles);
         }
     }
@@ -266,5 +273,23 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
         Toast.makeText(this, "Button clicked for: " + fileName, Toast.LENGTH_SHORT).show();
         // 调用 MainActivity 的其他方法
         alreadyInputNovelButtonClicker(fileName);
+        currentNovelTitle.setText(fileName);
+        restoreScrollPosition(fileName, txtContent);
+        currentNovelTitle.setVisibility(View.VISIBLE);
+        Log.d("donghuiTitleNew", ""+currentNovelTitle.getVisibility());
     }
+
+    private void saveScrollPosition(String fileName, int scrollY) {
+        SharedPreferences preferences = getSharedPreferences("ReadingHistory", MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt(fileName+"scroll_position", scrollY); // 保存滚动位置
+        editor.apply();
+    }
+
+    private void restoreScrollPosition(String fileName, TextView textView) {
+        SharedPreferences preferences = getSharedPreferences("ReadingHistory", MODE_PRIVATE);
+        int scrollY = preferences.getInt(fileName+"scroll_position", 0); // 默认位置为 0
+        textView.post(() -> textView.scrollTo(0, scrollY)); // 滚动到指定位置
+    }
+
 }
