@@ -8,19 +8,19 @@
     android:padding="16dp">
 
     <LinearLayout
+        android:id="@+id/layout_novel_title_for_input"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:id="@+id/layout_novel_title_for_input"
         android:background="@color/grey"
+        android:elevation="1dp"
+        android:orientation="vertical"
+        android:visibility="invisible"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.5"
-        android:elevation="1dp"
-        android:visibility="invisible">
+        app:layout_constraintVertical_bias="0.5">
 
         <EditText
             android:id="@+id/novel_title_for_input"
@@ -104,6 +104,14 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintTop_toBottomOf="@id/buttonReadStoredNovel" />
+
+        <Button
+            android:id="@+id/buttonSpeak"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="朗读"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"/>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 

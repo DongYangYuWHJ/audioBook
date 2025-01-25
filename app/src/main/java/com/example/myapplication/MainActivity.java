@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.speech.tts.UtteranceProgressListener;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.View;
@@ -27,12 +28,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
 
 import org.mozilla.universalchardet.UniversalDetector;
+import android.speech.tts.TextToSpeech;
 
 
 public class MainActivity extends AppCompatActivity implements OnButtonClickListener {
-
+    private TextToSpeech tts;
     private static final int PICK_TXT_FILE = 1; // 请求代码
     private TextView txtContent;
     ArrayList<TitleViewNovelRecorded> novelTitles;
@@ -41,6 +46,10 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
     RecyclerView recyclerView;
     View pageNovel;
     TextView currentNovelTitle;
+    String currentReadingText;
+
+    private List<String> sentences;
+    private int currentSentenceIndex = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,6 +96,16 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
                 pageNovel.setVisibility(View.INVISIBLE);
             }
         });
+
+        Button buttonSpeak = findViewById(R.id.buttonSpeak);
+
+        // 点击按钮朗读文本
+        buttonSpeak.setOnClickListener(v -> {
+            if (!sentences.isEmpty()) {
+                tts.speak(sentences.get(currentSentenceIndex), TextToSpeech.QUEUE_FLUSH, null, "UtteranceID_" + currentSentenceIndex);
+            }
+        });
+
         txtContent.getViewTreeObserver().addOnScrollChangedListener(() -> {
             int scrollY = txtContent.getScrollY(); // 获取当前滚动位置
             String novelTitle = (String)currentNovelTitle.getText();
@@ -94,6 +113,33 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
             Log.d("donghuiTitle", ""+currentNovelTitle.getVisibility());
             saveScrollPosition(novelTitle, scrollY); // 保存滚动位置
         });
+
+        tts = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                tts.setLanguage(Locale.CHINESE);
+                tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                    @Override
+                    public void onStart(String utteranceId) {
+                        Log.d("TTS", "Started speaking: " + utteranceId);
+                    }
+
+                    @Override
+                    public void onDone(String utteranceId) {
+                        Log.d("TTS", "Finished speaking: " + utteranceId);
+                        currentSentenceIndex++;
+                        if (currentSentenceIndex < sentences.size()) {
+                            tts.speak(sentences.get(currentSentenceIndex), TextToSpeech.QUEUE_FLUSH, null, "UtteranceID_" + currentSentenceIndex);
+                        }
+                    }
+
+                    @Override
+                    public void onError(String utteranceId) {
+                        Log.e("TTS", "Error in speaking: " + utteranceId);
+                    }
+                });
+            }
+        });
+
         novelTitles = new ArrayList<>();
         setUpNovelTitles();
         adapter = new Adapter_TitleViewNovelRecorded(this, novelTitles, this);
@@ -101,6 +147,15 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
     }
 
+    @Override
+    protected void onDestroy() {
+        // 释放 TTS 资源
+        if (tts != null) {
+            tts.stop();
+            tts.shutdown();
+        }
+        super.onDestroy();
+    }
 
     // 打开文件选择器
     private void openFilePicker() {
@@ -127,6 +182,15 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
             setUpNovelTitles(); // 重新加载标题列表
             adapter.updateData(novelTitles);
         }
+    }
+
+
+    private List<String> splitTextIntoSentences(String text) {
+        return Arrays.asList(text.split("(?<=[。！？])"));
+    }
+    private void updateReadingText(){
+        sentences = splitTextIntoSentences(txtContent.getText().toString());
+        currentSentenceIndex = 0;
     }
 
     protected void showFileNameInputDialog(Uri fileUri) {
@@ -246,6 +310,7 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
         String savedContent = loadFileFromInternalStorage(fileName);
         if (savedContent != null) {
             txtContent.setText(savedContent);
+            updateReadingText();
         }
     }
 
