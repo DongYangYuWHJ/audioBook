@@ -46,16 +46,18 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
     RecyclerView recyclerView;
     View pageNovel;
     TextView currentNovelTitle;
-    String currentReadingText;
 
     private List<String> sentences;
     private int currentSentenceIndex = 0;
+
+    private boolean readingStatus; //true for reading now, false for not reading
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        readingStatus = false;
         Button buttonReadFile = findViewById(R.id.buttonReadFile);
         Button buttonSelectAlreadyReadNovel = findViewById(R.id.buttonReadStoredNovel);
         pageNovel = findViewById(R.id.read_novel_page);
@@ -98,11 +100,19 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
         });
 
         Button buttonSpeak = findViewById(R.id.buttonSpeak);
+        Button buttonPause = findViewById(R.id.buttonPause);
 
         // 点击按钮朗读文本
         buttonSpeak.setOnClickListener(v -> {
-            if (!sentences.isEmpty()) {
-                tts.speak(sentences.get(currentSentenceIndex), TextToSpeech.QUEUE_FLUSH, null, "UtteranceID_" + currentSentenceIndex);
+            reading();
+        });
+
+        buttonPause.setOnClickListener(v -> {
+            if(readingStatus){
+                tts.stop();
+                readingStatus = false;
+            }else{
+                reading();
             }
         });
 
@@ -145,6 +155,13 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
         adapter = new Adapter_TitleViewNovelRecorded(this, novelTitles, this);
         recyclerView.setAdapter(adapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
+    }
+
+    private void reading(){
+        if (!sentences.isEmpty()) {
+            tts.speak(sentences.get(currentSentenceIndex), TextToSpeech.QUEUE_FLUSH, null, "UtteranceID_" + currentSentenceIndex);
+        }
+        readingStatus = true;
     }
 
     @Override
