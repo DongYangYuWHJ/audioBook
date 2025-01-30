@@ -43,7 +43,7 @@ import android.text.Spannable;
 
 public class MainActivity extends AppCompatActivity implements OnButtonClickListener {
     public static final String splitRegex = "[。！？,. \n]";
-    private TextToSpeech tts;
+    public static TextToSpeech tts;
     private static final int PICK_TXT_FILE = 1; // 请求代码
     private TextView txtContent;
     private TextTouchHandler touchHandler;
@@ -77,7 +77,7 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
         txtContent = findViewById(R.id.txtContent);
         txtContent.setMovementMethod(new ScrollingMovementMethod());
 
-        touchHandler = new TextTouchHandler(this, txtContent, sentences, tts);
+        touchHandler = new TextTouchHandler(this, txtContent, sentences);
         touchHandler.attach();
 
         buttonReadFile.setOnClickListener(new View.OnClickListener() {

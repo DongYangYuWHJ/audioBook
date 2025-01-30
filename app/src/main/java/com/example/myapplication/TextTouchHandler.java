@@ -1,5 +1,7 @@
 package com.example.myapplication;
 
+import static com.example.myapplication.MainActivity.tts;
+
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.speech.tts.TextToSpeech;
@@ -19,16 +21,18 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
     private final GestureDetector gestureDetector;
     private final TextView textView;
     private List<String> sentences;
-    private final TextToSpeech tts;
+    private Spannable spannable;
+    private int sentenceIndex;
 
-    public TextTouchHandler(Context context, TextView textView, List<String> sentences, TextToSpeech tts) {
+    public TextTouchHandler(Context context, TextView textView, List<String> sentences) {
         this.textView = textView;
         this.sentences = sentences;
-        this.tts = tts;
         this.gestureDetector = new GestureDetector(context, this);
+        spannable = new SpannableString(textView.getText());
     }
     public void updateSentences(List<String> sentences){
         this.sentences = sentences;
+        spannable = new SpannableString(textView.getText());
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -58,12 +62,16 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
         int offset = layout.getOffsetForHorizontal(line, x);
         Log.d("donghuiOffset", ""+offset);
         // 找到句子索引
-        int sentenceIndex = getSentenceIndexFromOffset(textView, sentences, offset);
+        sentenceIndex = getSentenceIndexFromOffset(textView, sentences, offset);
         Log.d("donghuiSentenceIndex", ""+sentenceIndex);
         if (sentenceIndex != -1) {
             highlightSentence(textView, sentenceIndex);
-//            startListeningFrom(sentenceIndex);
+            startListeningFrom(sentenceIndex);
         }
+    }
+
+    public int getSentenceIndex() {
+        return sentenceIndex;
     }
 
     private int getSentenceIndexFromOffset(TextView textView, List<String> sentences, int offset) {
@@ -84,7 +92,15 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
 
 
     private void highlightSentence(TextView textView, int sentenceIndex) {
-        Spannable spannable = new SpannableString(textView.getText());
+        // 获取所有的高亮 `BackgroundColorSpan`
+        BackgroundColorSpan[] spans = spannable.getSpans(0, spannable.length(), BackgroundColorSpan.class);
+
+        // 移除所有高亮
+        for (BackgroundColorSpan span : spans) {
+            spannable.removeSpan(span);
+        }
+
+        textView.setText(spannable); // 更新 `TextView`
         int start = 0;
         for(int i = 0; i < sentenceIndex; i++){
             start += sentences.get(i).length()+1;//add the separator param
@@ -93,7 +109,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
         int end = start + sentences.get(sentenceIndex).length()+1;
 
         if (start >= 0) {
-            spannable.setSpan(new BackgroundColorSpan(0xFFFFFF00), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            spannable.setSpan(new BackgroundColorSpan(0xFFFFFF00), start+1, end+1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             textView.setText(spannable);
         }
     }
@@ -102,8 +118,14 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
         for (int i = startIndex; i < sentences.size(); i++) {
             String sentence = sentences.get(i).trim();
             int finalI = i;
-
-            tts.speak(sentence, TextToSpeech.QUEUE_FLUSH, null, "UtteranceID_" + i);
+            if(tts == null){
+                Log.d("fatal check", "NULL!");
+            }
+            tts.speak(
+                    sentence,
+                    TextToSpeech.QUEUE_FLUSH,
+                    null,
+                    "UtteranceID_" + i);
             break;
         }
     }
