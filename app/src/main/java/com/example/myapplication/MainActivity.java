@@ -1,12 +1,17 @@
 package com.example.myapplication;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.speech.tts.UtteranceProgressListener;
+import android.text.SpannableString;
 import android.text.method.ScrollingMovementMethod;
+import android.text.style.BackgroundColorSpan;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -34,24 +39,26 @@ import java.util.Locale;
 
 import org.mozilla.universalchardet.UniversalDetector;
 import android.speech.tts.TextToSpeech;
-
+import android.text.Spannable;
 
 public class MainActivity extends AppCompatActivity implements OnButtonClickListener {
+    public static final String splitRegex = "[。！？,. \n]";
     private TextToSpeech tts;
     private static final int PICK_TXT_FILE = 1; // 请求代码
     private TextView txtContent;
+    private TextTouchHandler touchHandler;
     ArrayList<TitleViewNovelRecorded> novelTitles;
     Adapter_TitleViewNovelRecorded adapter;
     private EditText textNovelTitleForInput;
     RecyclerView recyclerView;
     View pageNovel;
     TextView currentNovelTitle;
-
     private List<String> sentences;
     private int currentSentenceIndex = 0;
 
     private boolean readingStatus; //true for reading now, false for not reading
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -69,6 +76,9 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
 
         txtContent = findViewById(R.id.txtContent);
         txtContent.setMovementMethod(new ScrollingMovementMethod());
+
+        touchHandler = new TextTouchHandler(this, txtContent, sentences, tts);
+        touchHandler.attach();
 
         buttonReadFile.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -119,8 +129,6 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
         txtContent.getViewTreeObserver().addOnScrollChangedListener(() -> {
             int scrollY = txtContent.getScrollY(); // 获取当前滚动位置
             String novelTitle = (String)currentNovelTitle.getText();
-            Log.d("donghuiTitle", novelTitle);
-            Log.d("donghuiTitle", ""+currentNovelTitle.getVisibility());
             saveScrollPosition(novelTitle, scrollY); // 保存滚动位置
         });
 
@@ -163,7 +171,6 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
         }
         readingStatus = true;
     }
-
     @Override
     protected void onDestroy() {
         // 释放 TTS 资源
@@ -203,11 +210,13 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
 
 
     private List<String> splitTextIntoSentences(String text) {
-        return Arrays.asList(text.split("(?<=[。！？])"));
+        return Arrays.asList(text.split("(?<=)" + splitRegex + ""));
     }
+
     private void updateReadingText(){
         sentences = splitTextIntoSentences(txtContent.getText().toString());
         currentSentenceIndex = 0;
+        touchHandler.updateSentences(sentences);
     }
 
     protected void showFileNameInputDialog(Uri fileUri) {
