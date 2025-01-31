@@ -3,19 +3,14 @@ package com.example.myapplication;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.speech.tts.UtteranceProgressListener;
-import android.text.SpannableString;
 import android.text.method.ScrollingMovementMethod;
-import android.text.style.BackgroundColorSpan;
 import android.util.Log;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -39,7 +34,6 @@ import java.util.Locale;
 
 import org.mozilla.universalchardet.UniversalDetector;
 import android.speech.tts.TextToSpeech;
-import android.text.Spannable;
 
 public class MainActivity extends AppCompatActivity implements OnButtonClickListener {
     public static final String splitRegex = "[。！？,. \n]";
@@ -53,10 +47,10 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
     RecyclerView recyclerView;
     View pageNovel;
     TextView currentNovelTitle;
-    private List<String> sentences;
-    private int currentSentenceIndex = 0;
+    private static List<String> sentences;
+    private static int currentSentenceIndex = 0;
 
-    private boolean readingStatus; //true for reading now, false for not reading
+    private static boolean readingStatus; //true for reading now, false for not reading
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -109,13 +103,13 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
             }
         });
 
-        Button buttonSpeak = findViewById(R.id.buttonSpeak);
+//        Button buttonSpeak = findViewById(R.id.buttonSpeak);
         Button buttonPause = findViewById(R.id.buttonPause);
 
         // 点击按钮朗读文本
-        buttonSpeak.setOnClickListener(v -> {
-            reading();
-        });
+//        buttonSpeak.setOnClickListener(v -> {
+//            reading();
+//        });
 
         buttonPause.setOnClickListener(v -> {
             if(readingStatus){
@@ -146,7 +140,13 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
                         Log.d("TTS", "Finished speaking: " + utteranceId);
                         currentSentenceIndex++;
                         if (currentSentenceIndex < sentences.size()) {
+                            while(sentences.get(currentSentenceIndex).length()==0){
+                                currentSentenceIndex++;
+                                //有些sentence是空的，不知道为什么，之后有时间可以看看，现在先跳过
+                                Log.d("donghuiSpanSkip", "we are skipping " + currentSentenceIndex);
+                            }
                             tts.speak(sentences.get(currentSentenceIndex), TextToSpeech.QUEUE_FLUSH, null, "UtteranceID_" + currentSentenceIndex);
+                            touchHandler.highlightSentence(currentSentenceIndex);
                         }
                     }
 
@@ -164,8 +164,13 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
         recyclerView.setAdapter(adapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
     }
+    public static void ttsReadWhenLongPress(int index){
+        tts.stop();
+        currentSentenceIndex = index;
+        reading();
+    }
 
-    private void reading(){
+    private static void reading(){
         if (!sentences.isEmpty()) {
             tts.speak(sentences.get(currentSentenceIndex), TextToSpeech.QUEUE_FLUSH, null, "UtteranceID_" + currentSentenceIndex);
         }
@@ -366,6 +371,7 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
         alreadyInputNovelButtonClicker(fileName);
         currentNovelTitle.setText(fileName);
         restoreScrollPosition(fileName, txtContent);
+//        restoreAudioRelated(fileName, currentSentenceIndex);
         currentNovelTitle.setVisibility(View.VISIBLE);
         Log.d("donghuiTitleNew", ""+currentNovelTitle.getVisibility());
     }
@@ -380,6 +386,16 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
     private void restoreScrollPosition(String fileName, TextView textView) {
         SharedPreferences preferences = getSharedPreferences("ReadingHistory", MODE_PRIVATE);
         int scrollY = preferences.getInt(fileName+"scroll_position", 0); // 默认位置为 0
+        textView.post(() -> textView.scrollTo(0, scrollY)); // 滚动到指定位置
+    }
+
+    private void restoreAudioRelated(String fileName, TextView textView){
+
+    }
+
+    private void restoreAudioPosition(String fileName, TextView textView) {
+        SharedPreferences preferences = getSharedPreferences("ReadingHistory", MODE_PRIVATE);
+        int scrollY = preferences.getInt(fileName+"audio_position", 0); // 默认位置为 0
         textView.post(() -> textView.scrollTo(0, scrollY)); // 滚动到指定位置
     }
 

@@ -1,10 +1,10 @@
 package com.example.myapplication;
 
-import static com.example.myapplication.MainActivity.tts;
+import static com.example.myapplication.MainActivity.ttsReadWhenLongPress;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.speech.tts.TextToSpeech;
+import android.graphics.Color;
 import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -23,12 +23,14 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
     private List<String> sentences;
     private Spannable spannable;
     private int sentenceIndex;
+    private Object highlightBackground;
 
     public TextTouchHandler(Context context, TextView textView, List<String> sentences) {
         this.textView = textView;
         this.sentences = sentences;
         this.gestureDetector = new GestureDetector(context, this);
         spannable = new SpannableString(textView.getText());
+        highlightBackground = new BackgroundColorSpan(Color.YELLOW);
     }
     public void updateSentences(List<String> sentences){
         this.sentences = sentences;
@@ -65,7 +67,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
         sentenceIndex = getSentenceIndexFromOffset(textView, sentences, offset);
         Log.d("donghuiSentenceIndex", ""+sentenceIndex);
         if (sentenceIndex != -1) {
-            highlightSentence(textView, sentenceIndex);
+            highlightSentence(sentenceIndex);
             startListeningFrom(sentenceIndex);
         }
     }
@@ -91,10 +93,12 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
 
 
 
-    private void highlightSentence(TextView textView, int sentenceIndex) {
-        // 获取所有的高亮 `BackgroundColorSpan`
-        BackgroundColorSpan[] spans = spannable.getSpans(0, spannable.length(), BackgroundColorSpan.class);
+    public void highlightSentence(int sentenceIndex) {
 
+
+        // 获取所有的高亮 `BackgroundColorSpan`
+        Log.d("donghuiSpan", "spanning at " + sentenceIndex);
+        BackgroundColorSpan[] spans = spannable.getSpans(0, spannable.length(), BackgroundColorSpan.class);
         // 移除所有高亮
         for (BackgroundColorSpan span : spans) {
             spannable.removeSpan(span);
@@ -109,25 +113,13 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
         int end = start + sentences.get(sentenceIndex).length()+1;
 
         if (start >= 0) {
-            spannable.setSpan(new BackgroundColorSpan(0xFFFFFF00), start+1, end+1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            spannable.setSpan(highlightBackground, start+1, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             textView.setText(spannable);
         }
     }
 
     private void startListeningFrom(int startIndex) {
-        for (int i = startIndex; i < sentences.size(); i++) {
-            String sentence = sentences.get(i).trim();
-            int finalI = i;
-            if(tts == null){
-                Log.d("fatal check", "NULL!");
-            }
-            tts.speak(
-                    sentence,
-                    TextToSpeech.QUEUE_FLUSH,
-                    null,
-                    "UtteranceID_" + i);
-            break;
-        }
+        ttsReadWhenLongPress(startIndex);
     }
 
     @Override public boolean onDown(MotionEvent e) { return false; }
