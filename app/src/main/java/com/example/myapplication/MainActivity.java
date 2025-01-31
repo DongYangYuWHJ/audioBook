@@ -124,6 +124,7 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
             int scrollY = txtContent.getScrollY(); // 获取当前滚动位置
             String novelTitle = (String)currentNovelTitle.getText();
             saveScrollPosition(novelTitle, scrollY); // 保存滚动位置
+            Log.d("donghuiScroll", "check");
         });
 
         tts = new TextToSpeech(this, status -> {
@@ -137,17 +138,26 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
 
                     @Override
                     public void onDone(String utteranceId) {
-                        Log.d("TTS", "Finished speaking: " + utteranceId);
-                        currentSentenceIndex++;
-                        if (currentSentenceIndex < sentences.size()) {
-                            while(sentences.get(currentSentenceIndex).length()==0){
-                                currentSentenceIndex++;
-                                //有些sentence是空的，不知道为什么，之后有时间可以看看，现在先跳过
-                                Log.d("donghuiSpanSkip", "we are skipping " + currentSentenceIndex);
+                        runOnUiThread(()->{
+                            Log.d("TTS", "Finished speaking: " + utteranceId);
+                            currentSentenceIndex++;
+                            if (currentSentenceIndex < sentences.size()) {
+                                while(sentences.get(currentSentenceIndex).length()==0){
+                                    currentSentenceIndex++;
+                                    //有些sentence是空的，不知道为什么，之后有时间可以看看，现在先跳过
+                                    Log.d("donghuiSpanSkip", "we are skipping " + currentSentenceIndex);
+                                }
+
+                                String novelTitle = (String)currentNovelTitle.getText();
+                                saveAudioIndex(novelTitle);
+
+                                tts.speak(sentences.get(currentSentenceIndex), TextToSpeech.QUEUE_FLUSH, null, "UtteranceID_" + currentSentenceIndex);
+                                touchHandler.highlightSentence(currentSentenceIndex);
+                                int newScrollY = touchHandler.getNewYScroll();
+                                //todo: 之后加个动画，现在一顿一顿的，太卡了
+                                txtContent.scrollTo(0, newScrollY - txtContent.getHeight() / 2);
                             }
-                            tts.speak(sentences.get(currentSentenceIndex), TextToSpeech.QUEUE_FLUSH, null, "UtteranceID_" + currentSentenceIndex);
-                            touchHandler.highlightSentence(currentSentenceIndex);
-                        }
+                        });
                     }
 
                     @Override
@@ -371,32 +381,39 @@ public class MainActivity extends AppCompatActivity implements OnButtonClickList
         alreadyInputNovelButtonClicker(fileName);
         currentNovelTitle.setText(fileName);
         restoreScrollPosition(fileName, txtContent);
-//        restoreAudioRelated(fileName, currentSentenceIndex);
+        restoreAudioRelated(fileName);
         currentNovelTitle.setVisibility(View.VISIBLE);
         Log.d("donghuiTitleNew", ""+currentNovelTitle.getVisibility());
     }
 
+    private String scrollPosition = "scroll_position";
     private void saveScrollPosition(String fileName, int scrollY) {
         SharedPreferences preferences = getSharedPreferences("ReadingHistory", MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
-        editor.putInt(fileName+"scroll_position", scrollY); // 保存滚动位置
+        editor.putInt(fileName+scrollPosition, scrollY); // 保存滚动位置
         editor.apply();
     }
-
     private void restoreScrollPosition(String fileName, TextView textView) {
         SharedPreferences preferences = getSharedPreferences("ReadingHistory", MODE_PRIVATE);
-        int scrollY = preferences.getInt(fileName+"scroll_position", 0); // 默认位置为 0
+        int scrollY = preferences.getInt(fileName+scrollPosition, 0); // 默认位置为 0
         textView.post(() -> textView.scrollTo(0, scrollY)); // 滚动到指定位置
     }
 
-    private void restoreAudioRelated(String fileName, TextView textView){
-
+    private void restoreAudioRelated(String fileName){
+        restoreAudioIndex(fileName);
+        touchHandler.highlightSentence(currentSentenceIndex);
     }
 
-    private void restoreAudioPosition(String fileName, TextView textView) {
+    private String audioIndex = "audio_index";
+    private void saveAudioIndex(String fileName){
         SharedPreferences preferences = getSharedPreferences("ReadingHistory", MODE_PRIVATE);
-        int scrollY = preferences.getInt(fileName+"audio_position", 0); // 默认位置为 0
-        textView.post(() -> textView.scrollTo(0, scrollY)); // 滚动到指定位置
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt(fileName+audioIndex, currentSentenceIndex); // 保存滚动位置
+        editor.apply();
+    }
+    private void restoreAudioIndex(String fileName) {
+        SharedPreferences preferences = getSharedPreferences("ReadingHistory", MODE_PRIVATE);
+        currentSentenceIndex = preferences.getInt(fileName+audioIndex, 0); // 默认位置为 0
     }
 
 }

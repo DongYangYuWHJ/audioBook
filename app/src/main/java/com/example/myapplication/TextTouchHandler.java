@@ -24,6 +24,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
     private Spannable spannable;
     private int sentenceIndex;
     private Object highlightBackground;
+    private int offset;
 
     public TextTouchHandler(Context context, TextView textView, List<String> sentences) {
         this.textView = textView;
@@ -110,6 +111,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
             start += sentences.get(i).length()+1;//add the separator param
         }
         start--;
+        offset = start;
         int end = start + sentences.get(sentenceIndex).length()+1;
 
         if (start >= 0) {
@@ -121,6 +123,15 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
     private void startListeningFrom(int startIndex) {
         ttsReadWhenLongPress(startIndex);
     }
+
+    public int getNewYScroll(){
+        Layout layout = textView.getLayout();
+        int line = layout.getLineForOffset(offset); // 计算句子所在行
+        int y = layout.getLineTop(line);
+        return y;
+    }
+
+
 
     @Override public boolean onDown(MotionEvent e) { return false; }
     @Override public void onShowPress(MotionEvent e) {}
