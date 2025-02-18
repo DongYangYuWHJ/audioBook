@@ -1,6 +1,6 @@
-package com.example.myapplication;
+package com.k2fsa.sherpa.onnx;
 
-import static com.example.myapplication.MainActivity.ttsReadWhenLongPress;
+//import static com.k2fsa.sherpa.onnx.MainActivityKotlin.ttsReadWhenLongPress;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -121,7 +121,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
     }
 
     private void startListeningFrom(int startIndex) {
-        ttsReadWhenLongPress(startIndex);
+        //ttsReadWhenLongPress(startIndex);
     }
 
     public int getNewYScroll(){

@@ -1,12 +1,10 @@
-package com.example.myapplication;
+package com.k2fsa.sherpa.onnx;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -17,10 +15,13 @@ public class Adapter_TitleViewNovelRecorded extends
         RecyclerView.Adapter<Adapter_TitleViewNovelRecorded.MyViewHolder> {
     Context context;
     ArrayList<TitleViewNovelRecorded> titles;
-    private OnButtonClickListener listener;
+    private MainActivityCallback listener;
 
     public Adapter_TitleViewNovelRecorded(Context context, ArrayList<TitleViewNovelRecorded> titles,
-                                          OnButtonClickListener listener) {
+                                          MainActivityCallback listener) {
+        if (context == null) {
+            throw new IllegalArgumentException("Context cannot be null");
+        }
         this.context = context;
         this.titles = titles;
         this.listener = listener;
@@ -28,16 +29,24 @@ public class Adapter_TitleViewNovelRecorded extends
 
     @NonNull
     @Override
-    public Adapter_TitleViewNovelRecorded.MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         //inflate the layout (give a looking to each row)
         LayoutInflater inflater = LayoutInflater.from(context);
         View view = inflater.inflate(R.layout.title_view_novel_recorded, parent, false);
-        return new Adapter_TitleViewNovelRecorded.MyViewHolder(view);
+        return new MyViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull Adapter_TitleViewNovelRecorded.MyViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull MyViewHolder holder, int position) {
         //assign value to each row
+        if (this.titles == null || this.titles.get(position) == null) {
+            return;
+        }
+
+        String title = this.titles.get(position).getTitle();
+        if (title == null) {
+            title = "Unknown"; // 为空时提供默认值
+        }
         holder.title.setText(titles.get(position).getTitle());
         holder.bind(titles.get(position).getTitle(), listener);
     }
@@ -45,11 +54,14 @@ public class Adapter_TitleViewNovelRecorded extends
     @Override
     public int getItemCount() {
         //recycler view wants to know how many items we have in total
-        return titles.size();
+        return (this.titles != null) ? this.titles.size() : 0;
     }
 
     // 更新数据
     public void updateData(ArrayList<TitleViewNovelRecorded> newTitles) {
+        if (newTitles == null) {
+            newTitles = new ArrayList<>();
+        }
         titles = newTitles;
         notifyDataSetChanged();
     }
@@ -62,8 +74,11 @@ public class Adapter_TitleViewNovelRecorded extends
             super(itemView);
 
             title = itemView.findViewById(R.id.title);
+            if (this.title == null) {
+                throw new NullPointerException("Button title not found! Check your XML layout.");
+            }
         }
-        public void bind(String fileName, OnButtonClickListener listener){
+        public void bind(String fileName, MainActivityCallback listener){
             title.setText(fileName);
             title.setOnClickListener(v -> {
                 if (listener != null) {

@@ -1,4 +1,4 @@
-package com.example.myapplication;
+package com.k2fsa.sherpa.onnx;
 
 public class TitleViewNovelRecorded {
     String title;

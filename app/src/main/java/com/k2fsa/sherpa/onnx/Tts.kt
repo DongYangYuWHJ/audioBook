@@ -1,7 +1,8 @@
 // Copyright (c)  2023  Xiaomi Corporation
-package com.example.myapplication
+package com.k2fsa.sherpa.onnx
 
 import android.content.res.AssetManager
+import android.util.Log
 
 data class OfflineTtsVitsModelConfig(
     var model: String = "",
@@ -70,11 +71,23 @@ class OfflineTts(
     private var ptr: Long
 
     init {
-        ptr = if (assetManager != null) {
-            newFromAsset(assetManager, config)
+        Log.d("donghuiDebug", "try tts kotlin 1")
+//        ptr = if (assetManager != null) {
+//            Log.d("donghuiDebug", "kotlin else 1")
+//            newFromAsset(assetManager, config)
+//        } else {
+//            Log.d("donghuiDebug", "kotlin else 2")
+//            newFromFile(config)
+//        }
+        if (assetManager != null) {
+            Log.d("donghuiDebug", "kotlin else 1")
+            ptr = newFromAsset(assetManager, config)
+            Log.d("donghuiDebug", "kotlin else 1.5")
         } else {
-            newFromFile(config)
+            Log.d("donghuiDebug", "kotlin else 2")
+            ptr = newFromFile(config) // 确保返回 Long
         }
+        Log.d("donghuiDebug", "try tts kotlin 2")
     }
 
     fun sampleRate() = getSampleRate(ptr)
