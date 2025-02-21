@@ -34,7 +34,7 @@ const val TAG = "sherpa-onnx"
 
 
 
-class MainActivityKotlin : AppCompatActivity(), MainActivityCallback {
+class MainActivity : AppCompatActivity(), MainActivityCallback {
     private lateinit var tts: OfflineTts
 //    private lateinit var text: EditText
 //    private lateinit var sid: EditText
@@ -72,6 +72,7 @@ class MainActivityKotlin : AppCompatActivity(), MainActivityCallback {
         setContentView(R.layout.activity_main)
 
         Log.i(TAG, "Start to initialize TTS")
+        Log.i(TAG, "joker")
         initTts()
         Log.i(TAG, "Finish initializing TTS")
 
@@ -93,7 +94,9 @@ class MainActivityKotlin : AppCompatActivity(), MainActivityCallback {
         txtContent.setMovementMethod(ScrollingMovementMethod())
 
         touchHandler = TextTouchHandler(this, txtContent, sentences)
+
         touchHandler!!.attach()
+        touchHandler!!.textTouchHandlerUpdateMainActivityCallBack(this)
 
         buttonReadFile.setOnClickListener {
             layoutNovelTitleForInput.visibility = View.VISIBLE
@@ -689,7 +692,7 @@ class MainActivityKotlin : AppCompatActivity(), MainActivityCallback {
         currentSentenceIndex = preferences.getInt(fileName + audioIndex, 0) // 默认位置为 0
     }
 
-    fun ttsReadWhenLongPress(index: Int) {
+    override fun ttsReadWhenLongPress(index: Int) {
         onClickStop()
         currentSentenceIndex = index
         reading()
