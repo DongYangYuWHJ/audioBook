@@ -117,7 +117,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                 onClickStop()
                 readingStatus = false
             } else {
-                reading()
+                reading(currentSentenceIndex)
             }
         }
 
@@ -171,7 +171,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         }
     }
 
-    private fun onClickGenerate() {
+    private fun onClickGenerate(index: Int) {
         val sidInt = 0//sid.text.toString().toIntOrNull()
         if (sidInt == null || sidInt < 0) {
             Toast.makeText(
@@ -193,7 +193,8 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             return
         }
 
-        val textStr = txtContent.text.toString().trim()
+//        val textStr = txtContent.text.toString().trim()
+        val textStr = sentences!!.get(index)
         if (textStr.isBlank() || textStr.isEmpty()) {
             Toast.makeText(applicationContext, "Please input a non-empty text!", Toast.LENGTH_SHORT)
                 .show()
@@ -222,6 +223,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
 //                    play.isEnabled = true
 //                    generate.isEnabled = true
                     track.stop()
+                    onTtsFinishCurrentSentence()
                 }
             }
         }.start()
@@ -633,31 +635,29 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     }
 
     override fun onTtsFinishCurrentSentence() {
-//        runOnUiThread {
-//            Log.d("TTS", "Finished speaking: ")
-//            currentSentenceIndex++
-//            if (currentSentenceIndex < sentences!!.size) {
-//                while (sentences!![currentSentenceIndex].length == 0) {
-//                    currentSentenceIndex++
-//                    //有些sentence是空的，不知道为什么，之后有时间可以看看，现在先跳过
-//                    Log.d(
-//                        "donghuiSpanSkip",
-//                        "we are skipping " + currentSentenceIndex
-//                    )
-//                }
-//
-//                val novelTitle = currentNovelTitle!!.text as String
-//                saveAudioIndex(novelTitle)
-//
-//                Companion.tts!!.generate(
-//                    sentences!![currentSentenceIndex]
-//                )
-//                touchHandler!!.highlightSentence(currentSentenceIndex)
-//                val newScrollY = touchHandler!!.newYScroll
-//                //todo: 之后加个动画，现在一顿一顿的，太卡了
-//                txtContent!!.scrollTo(0, newScrollY - txtContent!!.height / 2)
-//            }
-//        }
+        runOnUiThread {
+            Log.d("TTS", "Finished speaking: ")
+            currentSentenceIndex++
+            if (currentSentenceIndex < sentences!!.size) {
+                while (sentences!![currentSentenceIndex].length == 0) {
+                    currentSentenceIndex++
+                    //有些sentence是空的，不知道为什么，之后有时间可以看看，现在先跳过
+                    Log.d(
+                        "donghuiSpanSkip",
+                        "we are skipping " + currentSentenceIndex
+                    )
+                }
+
+                val novelTitle = currentNovelTitle!!.text as String
+                saveAudioIndex(novelTitle)
+
+                onClickGenerate(currentSentenceIndex)
+                touchHandler!!.highlightSentence(currentSentenceIndex)
+                val newScrollY = touchHandler!!.newYScroll
+                //todo: 之后加个动画，现在一顿一顿的，太卡了
+                txtContent!!.scrollTo(0, newScrollY - txtContent!!.height / 2)
+            }
+        }
     }
 
     private val scrollPosition = "scroll_position"
@@ -695,13 +695,13 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     override fun ttsReadWhenLongPress(index: Int) {
         onClickStop()
         currentSentenceIndex = index
-        reading()
+        reading(index)
     }
 
-    private fun reading() {
+    private fun reading(index: Int) {
         if (!sentences!!.isEmpty()) {
 //                tts!!.generate(sentences!![currentSentenceIndex])
-            onClickGenerate()
+            onClickGenerate(index)
         }
         readingStatus = true
     }
