@@ -25,13 +25,30 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
     private int sentenceIndex;
     private Object highlightBackground;
     private int offset;
+    private Context context;
+    private MainActivityCallback callback;
 
     public TextTouchHandler(Context context, TextView textView, List<String> sentences) {
+        Log.d("donghuiFatal", "进来了吗？？？");
         this.textView = textView;
         this.sentences = sentences;
         this.gestureDetector = new GestureDetector(context, this);
         spannable = new SpannableString(textView.getText());
         highlightBackground = new BackgroundColorSpan(Color.YELLOW);
+        this.context = context;
+    }
+    public void textTouchHandlerUpdateMainActivityCallBack(MainActivityCallback callback){
+        Log.d("donghuiFatal", "进来了咩咩咩咩吗");
+        this.callback = callback;
+        Log.d("donghuiFatal", "进来了");
+        if(callback==null){
+            Log.d("donghuiFatal", "为什么");
+        }else{
+            Log.d("donghuiFatal", "更奇怪了");
+        }
+    }
+    public void textTouchHandlerLog(){
+        Log.d("donghuiFatal", "咩咩咩咩吗");
     }
     public void updateSentences(List<String> sentences){
         this.sentences = sentences;
@@ -40,6 +57,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
 
     @SuppressLint("ClickableViewAccessibility")
     public void attach() {
+        Log.d("donghuiFatal", "attach了吗?");
         textView.setOnTouchListener((v, event) -> gestureDetector.onTouchEvent(event));
     }
 
@@ -121,7 +139,11 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
     }
 
     private void startListeningFrom(int startIndex) {
-        //ttsReadWhenLongPress(startIndex);
+        if(callback == null){
+            Log.d("donghuiFatal", "???");
+        }else{
+            callback.ttsReadWhenLongPress(startIndex);
+        }
     }
 
     public int getNewYScroll(){
