@@ -116,7 +116,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
 
 
         // 获取所有的高亮 `BackgroundColorSpan`
-        Log.d("donghuiSpan", "spanning at " + sentenceIndex);
+//        Log.d("donghuiSpan", "spanning at " + sentenceIndex);
         BackgroundColorSpan[] spans = spannable.getSpans(0, spannable.length(), BackgroundColorSpan.class);
         // 移除所有高亮
         for (BackgroundColorSpan span : spans) {

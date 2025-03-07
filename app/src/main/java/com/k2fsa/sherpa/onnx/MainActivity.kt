@@ -29,6 +29,8 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStreamReader
 import java.util.Arrays
+import java.util.LinkedList
+import java.util.Queue
 
 const val TAG = "sherpa-onnx"
 
@@ -36,7 +38,7 @@ const val TAG = "sherpa-onnx"
 
 class MainActivity : AppCompatActivity(), MainActivityCallback {
     private lateinit var tts: OfflineTts
-//    private lateinit var text: EditText
+    //    private lateinit var text: EditText
 //    private lateinit var sid: EditText
 //    private lateinit var speed: EditText
 //    private lateinit var generate: Button
@@ -64,6 +66,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     // see
     // https://developer.android.com/reference/kotlin/android/media/AudioTrack
     private lateinit var track: AudioTrack
+
+    private var audioFileNameQueue: Queue<String> = LinkedList()
+    private var audioQueueMaxSize = 3
+    private var audioQueueCounter = 0
 
 
     @SuppressLint("ClickableViewAccessibility")
@@ -115,9 +121,8 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         buttonPause.setOnClickListener { v: View? ->
             if (readingStatus) {
                 onClickStop()
-                readingStatus = false
             } else {
-                reading(currentSentenceIndex)
+                onClickPlay()
             }
         }
 
@@ -194,49 +199,75 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         }
 
 //        val textStr = txtContent.text.toString().trim()
-        val textStr = sentences!!.get(index)
-        if (textStr.isBlank() || textStr.isEmpty()) {
-            Toast.makeText(applicationContext, "Please input a non-empty text!", Toast.LENGTH_SHORT)
-                .show()
-            return
-        }
+
+        currentSentenceIndex = index
 
         track.pause()
         track.flush()
         track.play()
-
-//        play.isEnabled = false
-//        generate.isEnabled = false
         stopped = false
         Thread {
-            val audio = tts.generateWithCallback(
-                text = textStr,
-                sid = sidInt,
-                speed = speedFloat,
-                callback = this::callback
-            )
+            synchronized(audioFileNameQueue){
+                audioFileNameQueue.clear()
+                audioQueueCounter = 0
+                while(true){
+                    if(audioFileNameQueue.size <= audioQueueMaxSize){
 
-            val filename = application.filesDir.absolutePath + "/generated.wav"
-            val ok = audio.samples.size > 0 && audio.save(filename)
-            if (ok) {
-                runOnUiThread {
-//                    play.isEnabled = true
-//                    generate.isEnabled = true
-                    track.stop()
-                    onTtsFinishCurrentSentence()
+                        var textStr = sentences!!.get(currentSentenceIndex)
+                        if (textStr.isBlank() || textStr.isEmpty()) {
+                            currentSentenceIndex++
+                            continue
+                        }
+                        Log.d("donghuiGenerate", "generating: " + currentSentenceIndex)
+
+                        val audio = tts.generate(
+                            text = textStr,
+                            sid = sidInt,
+                            speed = speedFloat
+//                          callback = this::callback
+                        )
+
+                        val filename = application.filesDir.absolutePath + "/generated"+ audioQueueCounter%audioQueueMaxSize + ".wav"
+                        audioQueueCounter++
+                        currentSentenceIndex++
+                        val ok = audio.samples.size > 0 && audio.save(filename)
+                        if (ok) {
+                            runOnUiThread {
+//                                track.stop()
+                                audioFileNameQueue.add(filename)
+                            }
+                        }
+                    }else{
+                        Thread.sleep(50)
+                    }
                 }
             }
         }.start()
     }
 
     private fun onClickPlay() {
-        val filename = application.filesDir.absolutePath + "/generated.wav"
+        readingStatus = true
+        var filename = application.filesDir.absolutePath + "/generated0.wav"
+        if (audioFileNameQueue.size > 1){
+            filename = audioFileNameQueue.first()
+        }else{
+            return
+        }
+
         mediaPlayer?.stop()
         mediaPlayer = MediaPlayer.create(
             applicationContext,
             Uri.fromFile(File(filename))
         )
         mediaPlayer?.start()
+        mediaPlayer?.setOnCompletionListener {
+//            onClickStop()
+//            onTtsFinishCurrentSentence()
+
+            val str = audioFileNameQueue.remove()
+            Log.d("donghuiGenerate", "sentence removed: " + str)
+            onClickPlay()
+        }
     }
 
     private fun onClickStop() {
@@ -247,6 +278,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         track.flush()
         mediaPlayer?.stop()
         mediaPlayer = null
+        readingStatus = false
     }
 
     private fun initTts() {
@@ -634,30 +666,30 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         Log.d("donghuiTitleNew", "" + currentNovelTitle!!.visibility)
     }
 
-    override fun onTtsFinishCurrentSentence() {
-        runOnUiThread {
-            Log.d("TTS", "Finished speaking: ")
-            currentSentenceIndex++
-            if (currentSentenceIndex < sentences!!.size) {
-                while (sentences!![currentSentenceIndex].length == 0) {
-                    currentSentenceIndex++
-                    //有些sentence是空的，不知道为什么，之后有时间可以看看，现在先跳过
-                    Log.d(
-                        "donghuiSpanSkip",
-                        "we are skipping " + currentSentenceIndex
-                    )
-                }
-
-                val novelTitle = currentNovelTitle!!.text as String
-                saveAudioIndex(novelTitle)
-
-                onClickGenerate(currentSentenceIndex)
-                touchHandler!!.highlightSentence(currentSentenceIndex)
-                val newScrollY = touchHandler!!.newYScroll
-                //todo: 之后加个动画，现在一顿一顿的，太卡了
-                txtContent!!.scrollTo(0, newScrollY - txtContent!!.height / 2)
-            }
-        }
+    override fun onTtsFinishGneratingCurrentSentence() {
+//        runOnUiThread {
+//            Log.d("TTS", "Finished generating current sentence: ")
+//            currentSentenceIndex++
+//            if (currentSentenceIndex < sentences!!.size) {
+//                while (sentences!![currentSentenceIndex].length == 0) {
+//                    currentSentenceIndex++
+//                    //有些sentence是空的，不知道为什么，之后有时间可以看看，现在先跳过
+//                    Log.d(
+//                        "donghuiSpanSkip",
+//                        "we are skipping " + currentSentenceIndex
+//                    )
+//                }
+//
+//                val novelTitle = currentNovelTitle!!.text as String
+//                saveAudioIndex(novelTitle)
+//
+////                onClickGenerate(currentSentenceIndex)
+//                touchHandler!!.highlightSentence(currentSentenceIndex)
+//                val newScrollY = touchHandler!!.newYScroll
+//                //todo: 之后加个动画，现在一顿一顿的，太卡了
+//                txtContent!!.scrollTo(0, newScrollY - txtContent!!.height / 2)
+//            }
+//        }
     }
 
     private val scrollPosition = "scroll_position"
@@ -695,13 +727,13 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     override fun ttsReadWhenLongPress(index: Int) {
         onClickStop()
         currentSentenceIndex = index
-        reading(index)
+        onClickGenerate(currentSentenceIndex)
+        reading()
     }
 
-    private fun reading(index: Int) {
-        if (!sentences!!.isEmpty()) {
-//                tts!!.generate(sentences!![currentSentenceIndex])
-            onClickGenerate(index)
+    private fun reading() {
+        if (!sentences!!.isEmpty() && currentSentenceIndex < sentences!!.size && !stopped && audioFileNameQueue.size > 0) {
+            onClickPlay()
         }
         readingStatus = true
     }
