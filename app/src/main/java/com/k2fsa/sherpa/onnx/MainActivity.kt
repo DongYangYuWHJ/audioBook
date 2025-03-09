@@ -11,6 +11,8 @@ import android.media.AudioTrack
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.method.ScrollingMovementMethod
 import android.util.Log
 import android.view.View
@@ -67,10 +69,17 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     // https://developer.android.com/reference/kotlin/android/media/AudioTrack
     private lateinit var track: AudioTrack
 
-    private var audioFileNameQueue: Queue<String> = LinkedList()
-    private var audioQueueMaxSize = 3
+    private var audioQueueRegularSize = 3
+    private val audioQueueRemainder = 6
     private var audioQueueCounter = 0
 //    private
+
+    // 维护 index -> filename 的映射，限制最大大小
+    private val audioIndexToFileMap = LinkedHashMap<Int, String>(audioQueueRegularSize * 4, 0.75f, true)
+    private val audioIndexQueue: Queue<Int> = LinkedList()
+    private val dictionaryMaxSize = audioQueueRegularSize * 4
+    private var retryCount = 0
+    private val maxRetry = 50 // 最多重试 50 次（5 秒）
 
 
     @SuppressLint("ClickableViewAccessibility")
@@ -177,99 +186,167 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         }
     }
 
+//    private fun onClickGenerate(index: Int) {
+//        val sidInt = 0//sid.text.toString().toIntOrNull()
+//        if (sidInt == null || sidInt < 0) {
+//            Toast.makeText(
+//                applicationContext,
+//                "Please input a non-negative integer for speaker ID!",
+//                Toast.LENGTH_SHORT
+//            ).show()
+//            return
+//        }
+//
+////        val speedFloat = speed.text.toString().toFloatOrNull()
+//        val speedFloat = 1.0f
+//        if (speedFloat == null || speedFloat <= 0) {
+//            Toast.makeText(
+//                applicationContext,
+//                "Please input a positive number for speech speed!",
+//                Toast.LENGTH_SHORT
+//            ).show()
+//            return
+//        }
+//
+////        val textStr = txtContent.text.toString().trim()
+//
+//        currentSentenceIndex = index
+//
+//        track.pause()
+//        track.flush()
+//        track.play()
+//        stopped = false
+//        Thread {
+//            synchronized(audioFileNameQueue){
+//                audioFileNameQueue.clear()
+//                audioQueueCounter = 0
+//                while(true){
+//                    if(audioFileNameQueue.size <= audioQueueMaxSize){
+//
+//                        var textStr = sentences!!.get(currentSentenceIndex)
+//                        if (textStr.isBlank() || textStr.isEmpty()) {
+//                            currentSentenceIndex++
+//                            continue
+//                        }
+//                        Log.d("donghuiGenerate", "generating: " + currentSentenceIndex)
+//
+//                        val audio = tts.generate(
+//                            text = textStr,
+//                            sid = sidInt,
+//                            speed = speedFloat
+////                          callback = this::callback
+//                        )
+//
+//                        val filename = application.filesDir.absolutePath + "/generated"+ audioQueueCounter%audioQueueMaxSize + ".wav"
+//                        audioQueueCounter++
+//                        Log.d("donghuiGenerateCounter", "counter: " + audioQueueCounter)
+//                        currentSentenceIndex++
+//                        val ok = audio.samples.size > 0 && audio.save(filename)
+//                        if (ok) {
+//                            runOnUiThread {
+////                                track.stop()
+//                                audioFileNameQueue.add(filename)
+//                            }
+//                        }
+//                    }else{
+//                        Thread.sleep(50)
+//                    }
+//                }
+//            }
+//        }.start()
+//    }
+
     private fun onClickGenerate(index: Int) {
-        val sidInt = 0//sid.text.toString().toIntOrNull()
-        if (sidInt == null || sidInt < 0) {
-            Toast.makeText(
-                applicationContext,
-                "Please input a non-negative integer for speaker ID!",
-                Toast.LENGTH_SHORT
-            ).show()
-            return
-        }
-
-//        val speedFloat = speed.text.toString().toFloatOrNull()
+        val sidInt = 0
         val speedFloat = 1.0f
-        if (speedFloat == null || speedFloat <= 0) {
-            Toast.makeText(
-                applicationContext,
-                "Please input a positive number for speech speed!",
-                Toast.LENGTH_SHORT
-            ).show()
-            return
-        }
-
-//        val textStr = txtContent.text.toString().trim()
 
         currentSentenceIndex = index
-
-        track.pause()
-        track.flush()
-        track.play()
         stopped = false
-        Thread {
-            synchronized(audioFileNameQueue){
-                audioFileNameQueue.clear()
-                audioQueueCounter = 0
-                while(true){
-                    if(audioFileNameQueue.size <= audioQueueMaxSize){
 
-                        var textStr = sentences!!.get(currentSentenceIndex)
-                        if (textStr.isBlank() || textStr.isEmpty()) {
+        Thread {
+            synchronized(audioIndexQueue) {
+                while (true) {
+                    if(audioIndexQueue.size <= audioQueueRegularSize){
+                        val textStr = sentences!!.getOrNull(currentSentenceIndex) ?: break
+                        if (textStr.isBlank()) {
                             currentSentenceIndex++
                             continue
                         }
-                        Log.d("donghuiGenerate", "generating: " + currentSentenceIndex)
-
-                        val audio = tts.generate(
-                            text = textStr,
-                            sid = sidInt,
-                            speed = speedFloat
-//                          callback = this::callback
-                        )
-
-                        val filename = application.filesDir.absolutePath + "/generated"+ audioQueueCounter%audioQueueMaxSize + ".wav"
-                        audioQueueCounter++
-                        currentSentenceIndex++
-                        val ok = audio.samples.size > 0 && audio.save(filename)
+//                        Log.d("donghuiGenerate", "generating: " + currentSentenceIndex)
+//                        Log.d("donghuiGenerate", "size when generation: " + audioIndexQueue.size)
+                        val audio = tts.generate(textStr, sid = sidInt, speed = speedFloat)
+                        val filename = application.filesDir.absolutePath + "/generated${audioQueueCounter % audioQueueRemainder}.wav"
+                        Log.d("donghuiGenerate", "generating: " + filename + " index: " + currentSentenceIndex)
+                        val ok = audio.samples.isNotEmpty() && audio.save(filename)
                         if (ok) {
                             runOnUiThread {
-//                                track.stop()
-                                audioFileNameQueue.add(filename)
+                                audioIndexToFileMap[currentSentenceIndex] = filename
+                                audioIndexQueue.add(currentSentenceIndex)
+
+                                // **删除 dictionary 里最早的项，但要确保它不在 Queue 里**
+                                if (audioIndexToFileMap.size > dictionaryMaxSize) {
+                                    val oldestKey = audioIndexToFileMap.keys.firstOrNull()
+                                    if (oldestKey != null && !audioIndexQueue.contains(oldestKey)) {
+                                        audioIndexToFileMap.remove(oldestKey)
+                                    }
+                                }
                             }
                         }
-                    }else{
-                        Thread.sleep(50)
+
+                        audioQueueCounter++
+                        currentSentenceIndex++
                     }
+                    Thread.sleep(50) // 避免生成速度过快
                 }
             }
         }.start()
     }
 
     private fun onClickPlay() {
-        readingStatus = true
-        var filename = application.filesDir.absolutePath + "/generated0.wav"
-        if (audioFileNameQueue.size > 1){
-            filename = audioFileNameQueue.first()
-        }else{
+        if (audioIndexQueue.isEmpty()) {
+            if (retryCount < maxRetry) {
+                retryCount++
+                Handler(Looper.getMainLooper()).postDelayed({ onClickPlay() }, 100)
+            } else {
+                Log.e("donghuiError", "播放重试超过最大次数，停止播放")
+                retryCount = 0
+            }
+            return
+        }
+        retryCount = 0 // 成功播放后，重置重试计数
+
+        val index = audioIndexQueue.peek()
+        val filename = audioIndexToFileMap[index]
+
+        if (filename == null) {
+            Log.e("donghuiError", "找不到音频文件映射: index = $index, 重新生成")
+            onClickGenerate(index)
+            Handler(Looper.getMainLooper()).postDelayed({ onClickPlay() }, 500)
+            return
+        }
+
+        val file = File(filename)
+        if (!file.exists()) {
+            Log.e("donghuiError", "文件丢失: $filename, 重新生成")
+            onClickGenerate(index)
+            Handler(Looper.getMainLooper()).postDelayed({ onClickPlay() }, 500)
             return
         }
 
         mediaPlayer?.stop()
-        mediaPlayer = MediaPlayer.create(
-            applicationContext,
-            Uri.fromFile(File(filename))
-        )
-        mediaPlayer?.playbackParams = mediaPlayer?.playbackParams!!.setSpeed(0.85f) // 1.5倍速
-        mediaPlayer?.start()
-        mediaPlayer?.setOnCompletionListener {
-//            onClickStop()
-//            onTtsFinishCurrentSentence()
+        mediaPlayer?.release()
+        mediaPlayer = MediaPlayer.create(applicationContext, Uri.fromFile(file))
 
-            val str = audioFileNameQueue.remove()
-            Log.d("donghuiGenerate", "sentence removed: " + str)
-            onClickPlay()
+        mediaPlayer?.setOnCompletionListener {
+            val removedIndex = audioIndexQueue.poll()
+            audioIndexToFileMap.remove(removedIndex)
+//            Log.d("donghuiGenerate","queue还剩下: ${audioIndexQueue.size}")
+            Log.d("donghuiGenerate", "playing: " + filename + " index: " + index)
+            Handler(Looper.getMainLooper()).postDelayed({ onClickPlay() }, 200)
         }
+
+        mediaPlayer?.playbackParams = mediaPlayer?.playbackParams!!.setSpeed(0.85f)
+        mediaPlayer?.start()
     }
 
     private fun onClickStop() {
@@ -734,9 +811,15 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     }
 
     private fun reading() {
-        if (!sentences!!.isEmpty() && currentSentenceIndex < sentences!!.size && !stopped && audioFileNameQueue.size > 0) {
-            onClickPlay()
-        }
         readingStatus = true
+        Thread {
+            while (readingStatus) {
+                if (!sentences!!.isEmpty() && currentSentenceIndex < sentences!!.size && !stopped && audioIndexQueue.size >= audioQueueRegularSize) {
+                    onClickPlay()
+                    break
+                }
+                Thread.sleep(250)
+            }
+        }.start()
     }
 }
