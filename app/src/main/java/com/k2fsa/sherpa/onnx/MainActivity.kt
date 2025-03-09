@@ -70,6 +70,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     private var audioFileNameQueue: Queue<String> = LinkedList()
     private var audioQueueMaxSize = 3
     private var audioQueueCounter = 0
+//    private
 
 
     @SuppressLint("ClickableViewAccessibility")
@@ -259,6 +260,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             applicationContext,
             Uri.fromFile(File(filename))
         )
+        mediaPlayer?.playbackParams = mediaPlayer?.playbackParams!!.setSpeed(0.85f) // 1.5倍速
         mediaPlayer?.start()
         mediaPlayer?.setOnCompletionListener {
 //            onClickStop()
