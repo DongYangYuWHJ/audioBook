@@ -40,13 +40,6 @@ const val TAG = "sherpa-onnx"
 
 class MainActivity : AppCompatActivity(), MainActivityCallback {
     private lateinit var tts: OfflineTts
-    //    private lateinit var text: EditText
-//    private lateinit var sid: EditText
-//    private lateinit var speed: EditText
-//    private lateinit var generate: Button
-//    private lateinit var play: Button
-//    private lateinit var stop: Button
-    private var stopped: Boolean = false
     private var mediaPlayer: MediaPlayer? = null
 
 
@@ -80,6 +73,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     private val dictionaryMaxSize = audioQueueRegularSize * 4
     private var retryCount = 0
     private val maxRetry = 50 // 最多重试 50 次（5 秒）
+    private var peededAudioQueueIndex: Int = 0
 
 
     @SuppressLint("ClickableViewAccessibility")
@@ -130,9 +124,9 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
 
         buttonPause.setOnClickListener { v: View? ->
             if (readingStatus) {
-                onClickStop()
+                onClickPause()
             } else {
-                onClickPlay()
+                onClickResume()
             }
         }
 
@@ -176,84 +170,14 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     }
 
     // this function is called from C++
-    private fun callback(samples: FloatArray): Int {
-        if (!stopped) {
-            track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
-            return 1
-        } else {
-            track.stop()
-            return 0
-        }
-    }
-
-//    private fun onClickGenerate(index: Int) {
-//        val sidInt = 0//sid.text.toString().toIntOrNull()
-//        if (sidInt == null || sidInt < 0) {
-//            Toast.makeText(
-//                applicationContext,
-//                "Please input a non-negative integer for speaker ID!",
-//                Toast.LENGTH_SHORT
-//            ).show()
-//            return
+//    private fun callback(samples: FloatArray): Int {
+//        if (!stopped) {
+//            track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
+//            return 1
+//        } else {
+//            track.stop()
+//            return 0
 //        }
-//
-////        val speedFloat = speed.text.toString().toFloatOrNull()
-//        val speedFloat = 1.0f
-//        if (speedFloat == null || speedFloat <= 0) {
-//            Toast.makeText(
-//                applicationContext,
-//                "Please input a positive number for speech speed!",
-//                Toast.LENGTH_SHORT
-//            ).show()
-//            return
-//        }
-//
-////        val textStr = txtContent.text.toString().trim()
-//
-//        currentSentenceIndex = index
-//
-//        track.pause()
-//        track.flush()
-//        track.play()
-//        stopped = false
-//        Thread {
-//            synchronized(audioFileNameQueue){
-//                audioFileNameQueue.clear()
-//                audioQueueCounter = 0
-//                while(true){
-//                    if(audioFileNameQueue.size <= audioQueueMaxSize){
-//
-//                        var textStr = sentences!!.get(currentSentenceIndex)
-//                        if (textStr.isBlank() || textStr.isEmpty()) {
-//                            currentSentenceIndex++
-//                            continue
-//                        }
-//                        Log.d("donghuiGenerate", "generating: " + currentSentenceIndex)
-//
-//                        val audio = tts.generate(
-//                            text = textStr,
-//                            sid = sidInt,
-//                            speed = speedFloat
-////                          callback = this::callback
-//                        )
-//
-//                        val filename = application.filesDir.absolutePath + "/generated"+ audioQueueCounter%audioQueueMaxSize + ".wav"
-//                        audioQueueCounter++
-//                        Log.d("donghuiGenerateCounter", "counter: " + audioQueueCounter)
-//                        currentSentenceIndex++
-//                        val ok = audio.samples.size > 0 && audio.save(filename)
-//                        if (ok) {
-//                            runOnUiThread {
-////                                track.stop()
-//                                audioFileNameQueue.add(filename)
-//                            }
-//                        }
-//                    }else{
-//                        Thread.sleep(50)
-//                    }
-//                }
-//            }
-//        }.start()
 //    }
 
     private fun onClickGenerate(index: Int) {
@@ -261,10 +185,9 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         val speedFloat = 1.0f
 
         currentSentenceIndex = index
-        stopped = false
 
         Thread {
-            synchronized(audioIndexQueue) {
+            kotlin.synchronized(audioIndexQueue) {
                 while (true) {
                     if(audioIndexQueue.size <= audioQueueRegularSize){
                         val textStr = sentences!!.getOrNull(currentSentenceIndex) ?: break
@@ -315,12 +238,14 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         }
         retryCount = 0 // 成功播放后，重置重试计数
 
-        val index = audioIndexQueue.peek()
-        val filename = audioIndexToFileMap[index]
+        peededAudioQueueIndex = audioIndexQueue.peek()
+        val filename = audioIndexToFileMap[peededAudioQueueIndex]
+        peededAudioQueueIndex-- //不知道为什么，play的index就是比generate的index大1
+        Log.d("donghuiGenerate", "playing: " + filename + " index: " + peededAudioQueueIndex)
 
         if (filename == null) {
-            Log.e("donghuiError", "找不到音频文件映射: index = $index, 重新生成")
-            onClickGenerate(index)
+            Log.e("donghuiError", "找不到音频文件映射: index = $peededAudioQueueIndex, 重新生成")
+            onClickGenerate(peededAudioQueueIndex)
             Handler(Looper.getMainLooper()).postDelayed({ onClickPlay() }, 500)
             return
         }
@@ -328,7 +253,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         val file = File(filename)
         if (!file.exists()) {
             Log.e("donghuiError", "文件丢失: $filename, 重新生成")
-            onClickGenerate(index)
+            onClickGenerate(peededAudioQueueIndex)
             Handler(Looper.getMainLooper()).postDelayed({ onClickPlay() }, 500)
             return
         }
@@ -341,23 +266,27 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             val removedIndex = audioIndexQueue.poll()
             audioIndexToFileMap.remove(removedIndex)
 //            Log.d("donghuiGenerate","queue还剩下: ${audioIndexQueue.size}")
-            Log.d("donghuiGenerate", "playing: " + filename + " index: " + index)
+
             Handler(Looper.getMainLooper()).postDelayed({ onClickPlay() }, 200)
         }
 
         mediaPlayer?.playbackParams = mediaPlayer?.playbackParams!!.setSpeed(0.85f)
         mediaPlayer?.start()
+        if(touchHandler.onLongPressFirstSentence){
+            touchHandler.onLongPressFirstSentence = false
+        }else{
+            touchHandler.highlightSentence(peededAudioQueueIndex!!)
+        }
     }
 
-    private fun onClickStop() {
-        stopped = true
-//        play.isEnabled = true
-//        generate.isEnabled = true
-        track.pause()
-        track.flush()
-        mediaPlayer?.stop()
-        mediaPlayer = null
+    private fun onClickPause() {
+        mediaPlayer?.pause()
+//        mediaPlayer = null
         readingStatus = false
+    }
+    private fun onClickResume() {
+        readingStatus = true
+        mediaPlayer?.start()
     }
 
     private fun initTts() {
@@ -553,7 +482,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     override fun onDestroy() {
         // 释放 TTS 资源
         if (tts != null) {
-            onClickStop()
+            onClickPause()
         }
         super.onDestroy()
     }
@@ -804,7 +733,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     }
 
     override fun ttsReadWhenLongPress(index: Int) {
-        onClickStop()
+        onClickPause()
         currentSentenceIndex = index
         onClickGenerate(currentSentenceIndex)
         reading()
@@ -813,12 +742,14 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     private fun reading() {
         readingStatus = true
         Thread {
-            while (readingStatus) {
-                if (!sentences!!.isEmpty() && currentSentenceIndex < sentences!!.size && !stopped && audioIndexQueue.size >= audioQueueRegularSize) {
-                    onClickPlay()
-                    break
+            kotlin.synchronized(peededAudioQueueIndex){
+                while (readingStatus) {
+                    if (!sentences!!.isEmpty() && currentSentenceIndex < sentences!!.size && audioIndexQueue.size >= audioQueueRegularSize) {
+                        onClickPlay()
+                        break
+                    }
+                    Thread.sleep(250)
                 }
-                Thread.sleep(250)
             }
         }.start()
     }

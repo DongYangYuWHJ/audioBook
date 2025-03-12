@@ -27,6 +27,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
     private int offset;
     private Context context;
     private MainActivityCallback callback;
+    public boolean onLongPressFirstSentence;
 
     public TextTouchHandler(Context context, TextView textView, List<String> sentences) {
         Log.d("donghuiFatal", "进来了吗？？？");
@@ -38,14 +39,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
         this.context = context;
     }
     public void textTouchHandlerUpdateMainActivityCallBack(MainActivityCallback callback){
-        Log.d("donghuiFatal", "进来了咩咩咩咩吗");
         this.callback = callback;
-        Log.d("donghuiFatal", "进来了");
-        if(callback==null){
-            Log.d("donghuiFatal", "为什么");
-        }else{
-            Log.d("donghuiFatal", "更奇怪了");
-        }
     }
     public void textTouchHandlerLog(){
         Log.d("donghuiFatal", "咩咩咩咩吗");
@@ -89,6 +83,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
             highlightSentence(sentenceIndex);
             startListeningFrom(sentenceIndex);
         }
+        onLongPressFirstSentence = true;
     }
 
     public int getSentenceIndex() {
