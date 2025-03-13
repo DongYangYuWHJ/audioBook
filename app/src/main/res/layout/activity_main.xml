@@ -5,123 +5,195 @@
     android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:background="@drawable/reading_background">
 
+    <!-- 小说标题输入对话框 -->
     <LinearLayout
         android:id="@+id/layout_novel_title_for_input"
-        android:layout_width="wrap_content"
+        android:layout_width="300dp"
         android:layout_height="wrap_content"
-        android:background="@color/grey"
-        android:elevation="1dp"
+        android:background="@drawable/dialog_background"
+        android:elevation="4dp"
         android:orientation="vertical"
+        android:padding="20dp"
         android:visibility="invisible"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.5">
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="添加新书"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"
+            android:layout_marginBottom="16dp"/>
 
         <EditText
             android:id="@+id/novel_title_for_input"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ems="10"
-            android:inputType="text"
-            android:text="小说名：" />
+            android:background="@drawable/input_background"
+            android:hint="请输入小说名称"
+            android:padding="16dp"
+            android:textSize="16sp"
+            android:textColorHint="@color/text_hint"
+            android:inputType="text" />
 
         <Button
             android:id="@+id/button_novel_title_for_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="确认录入" />
-
+            android:layout_marginTop="20dp"
+            android:background="@drawable/primary_button"
+            android:text="确认添加"
+            android:textSize="16sp"
+            android:textColor="@android:color/white" />
     </LinearLayout>
 
-
+    <!-- 书架列表 -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_view"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:elevation="0.5dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:padding="16dp"
         android:visibility="invisible"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.5" />
+        app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- 阅读页面 -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/read_novel_page"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:layout_editor_absoluteX="16dp"
-        tools:layout_editor_absoluteY="16dp">
+        android:layout_height="match_parent">
 
-        <Button
-            android:id="@+id/buttonReadFile"
+        <!-- 顶部工具栏 -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/top_toolbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="select txt file"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            android:layout_margin="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            app:layout_constraintTop_toTopOf="parent">
 
-        <Button
-            android:id="@+id/buttonReadStoredNovel"
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/current_novel_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:layout_marginBottom="16dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <Button
+                        android:id="@+id/buttonReadFile"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/secondary_button"
+                        android:text="导入TXT"
+                        android:textColor="@color/text_primary" />
+
+                    <Button
+                        android:id="@+id/buttonReadStoredNovel"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/secondary_button"
+                        android:text="我的书架"
+                        android:textColor="@color/text_primary" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 阅读内容区域 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_margin="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            app:layout_constraintTop_toBottomOf="@id/top_toolbar"
+            app:layout_constraintBottom_toTopOf="@id/bottom_toolbar">
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <TextView
+                    android:id="@+id/txtContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/content_background"
+                    android:lineSpacingExtra="8dp"
+                    android:lineSpacingMultiplier="1.2"
+                    android:padding="24dp"
+                    android:scrollbars="vertical"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp"
+                    android:letterSpacing="0.02"
+                    android:hyphenationFrequency="full"/>
+            </ScrollView>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 底部工具栏 -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/bottom_toolbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="select uploaded novels"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/buttonReadFile" />
+            android:layout_margin="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            app:layout_constraintBottom_toBottomOf="parent">
 
-        <TextView
-            android:id="@+id/current_novel_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="title"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintHorizontal_bias="0.5"
-            app:layout_constraintVertical_bias="0.16"
-            android:elevation="2dp"
-            android:visibility="visible"/>
+            <LinearLayout
+                android:id="@+id/controls_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:gravity="center">
 
-        <TextView
-            android:id="@+id/txtContent"
-            android:layout_width="match_parent"
-            android:layout_height="550dp"
-            android:layout_marginTop="8dp"
-            android:background="#f0f0f0"
-            android:overScrollMode="always"
-            android:padding="8dp"
-            android:scrollbars="vertical"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/buttonReadStoredNovel" />
+                <Button
+                    android:id="@+id/buttonPause"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/control_button"
+                    android:text="暂停朗读"
+                    android:textColor="@color/text_primary" />
 
-        <Button
-            android:id="@+id/buttonSpeak"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="朗读"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
-            android:visibility="gone"/>
+                <Button
+                    android:id="@+id/buttonSpeak"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/control_button"
+                    android:text="开始朗读"
+                    android:textColor="@color/text_primary" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-        <Button
-            android:id="@+id/buttonPause"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginRight="100dp"
-            android:text="pause"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintRight_toRightOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
-
-
 </androidx.constraintlayout.widget.ConstraintLayout>

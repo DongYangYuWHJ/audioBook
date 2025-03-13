@@ -8,4 +8,13 @@
     <color name="purple_700">#FF3700B3</color>
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
+    <color name="colorPrimary">#FF6B6B</color>
+    <color name="colorPrimaryDark">#E64C4C</color>
+    <color name="colorAccent">#4ECDC4</color>
+    <color name="text_primary">#2C3E50</color>
+    <color name="text_secondary">#7F8C8D</color>
+    <color name="text_hint">#95A5A6</color>
+    <color name="background_primary">#FFFFFF</color>
+    <color name="background_secondary">#F5F6FA</color>
+    <color name="background_content">#FFF9F0</color>
 </resources>

@@ -124,8 +124,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
 
         buttonPause.setOnClickListener { v: View? ->
             if (readingStatus) {
+                buttonPause.setText("resume")
                 onClickPause()
             } else {
+                buttonPause.setText("pause")
                 onClickResume()
             }
         }
@@ -483,6 +485,8 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         // 释放 TTS 资源
         if (tts != null) {
             onClickPause()
+            mediaPlayer?.stop()
+            mediaPlayer = null
         }
         super.onDestroy()
     }
