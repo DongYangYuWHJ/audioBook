@@ -66,7 +66,6 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     private val audioQueueRemainder = 6
     private var audioQueueCounter = 0
 //    private
-
     // 维护 index -> filename 的映射，限制最大大小
     private val audioIndexToFileMap = LinkedHashMap<Int, String>(audioQueueRegularSize * 4, 0.75f, true)
     private val audioIndexQueue: Queue<Int> = LinkedList()
@@ -678,32 +677,6 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         Log.d("donghuiTitleNew", "" + currentNovelTitle!!.visibility)
     }
 
-    override fun onTtsFinishGneratingCurrentSentence() {
-//        runOnUiThread {
-//            Log.d("TTS", "Finished generating current sentence: ")
-//            currentSentenceIndex++
-//            if (currentSentenceIndex < sentences!!.size) {
-//                while (sentences!![currentSentenceIndex].length == 0) {
-//                    currentSentenceIndex++
-//                    //有些sentence是空的，不知道为什么，之后有时间可以看看，现在先跳过
-//                    Log.d(
-//                        "donghuiSpanSkip",
-//                        "we are skipping " + currentSentenceIndex
-//                    )
-//                }
-//
-//                val novelTitle = currentNovelTitle!!.text as String
-//                saveAudioIndex(novelTitle)
-//
-////                onClickGenerate(currentSentenceIndex)
-//                touchHandler!!.highlightSentence(currentSentenceIndex)
-//                val newScrollY = touchHandler!!.newYScroll
-//                //todo: 之后加个动画，现在一顿一顿的，太卡了
-//                txtContent!!.scrollTo(0, newScrollY - txtContent!!.height / 2)
-//            }
-//        }
-    }
-
     private val scrollPosition = "scroll_position"
     private fun saveScrollPosition(fileName: String, scrollY: Int) {
         val preferences = getSharedPreferences("ReadingHistory", MODE_PRIVATE)
@@ -756,5 +729,26 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                 }
             }
         }.start()
+    }
+
+    override fun onBackPressed() {
+        // 检查当前显示的页面状态
+        when {
+            // 如果书架列表可见，隐藏它并显示主页面
+            recyclerView.visibility == View.VISIBLE -> {
+                recyclerView.visibility = View.INVISIBLE
+                pageNovel.visibility = View.VISIBLE
+            }
+            // 如果标题输入对话框可见，隐藏它并返回主页面
+            findViewById<View>(R.id.layout_novel_title_for_input).visibility == View.VISIBLE -> {
+                findViewById<View>(R.id.layout_novel_title_for_input).visibility = View.INVISIBLE
+                textNovelTitleForInput.setText("") // 清空输入框
+                pageNovel.visibility = View.VISIBLE // 确保主页面可见
+            }
+            // 其他情况，执行默认的返回操作
+            else -> {
+                super.onBackPressed()
+            }
+        }
     }
 }
