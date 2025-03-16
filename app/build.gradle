@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace 'com.k2fsa.sherpa.onnx'
-    compileSdk 32
+    compileSdk 33
 
     defaultConfig {
         applicationId "com.k2fsa.sherpa.onnx"
@@ -46,4 +46,7 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.4.0")
+    implementation 'com.google.android.exoplayer:exoplayer:2.19.1'
+    implementation 'com.google.android.exoplayer:exoplayer-core:2.19.1'
+    implementation 'com.google.android.exoplayer:exoplayer-ui:2.19.1'
 }

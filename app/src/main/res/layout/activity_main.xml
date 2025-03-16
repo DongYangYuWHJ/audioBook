@@ -157,6 +157,15 @@
         </com.google.android.material.card.MaterialCardView>
 
         <!-- 底部工具栏 -->
+        <ProgressBar
+            android:id="@+id/audioLoadingProgress"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_margin="16dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"/>
+
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/bottom_toolbar"
             android:layout_width="wrap_content"

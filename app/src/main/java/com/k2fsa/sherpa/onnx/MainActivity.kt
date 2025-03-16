@@ -8,7 +8,6 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
-import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -18,12 +17,19 @@ import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.source.ProgressiveMediaSource
+import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
+import com.google.android.exoplayer2.util.Util
 import org.mozilla.universalchardet.UniversalDetector
 import java.io.BufferedReader
 import java.io.File
@@ -40,7 +46,9 @@ const val TAG = "sherpa-onnx"
 
 class MainActivity : AppCompatActivity(), MainActivityCallback {
     private lateinit var tts: OfflineTts
-    private var mediaPlayer: MediaPlayer? = null
+    private var player: ExoPlayer? = null
+    private lateinit var audioLoadingProgress: ProgressBar
+    private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
 
 
     lateinit private var txtContent: TextView
@@ -79,6 +87,32 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // 初始化 ExoPlayer
+        player = ExoPlayer.Builder(this).build()
+        val dataSourceFactory = DefaultDataSourceFactory(this,
+            Util.getUserAgent(this, "AudioBook"))
+        mediaSourceFactory = ProgressiveMediaSource.Factory(dataSourceFactory)
+
+        // 设置播放监听器
+        player?.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                when (state) {
+                    Player.STATE_ENDED -> {
+                        // 当前音频播放完成
+                        val removedIndex = audioIndexQueue.poll()
+                        audioIndexToFileMap.remove(removedIndex)
+                        
+                        // 如果队列中还有音频，继续播放
+                        if (!audioIndexQueue.isEmpty()) {
+                            playNextAudio()
+                        }
+                    }
+                }
+            }
+        })
+
+        audioLoadingProgress = findViewById(R.id.audioLoadingProgress)
 
         Log.i(TAG, "Start to initialize TTS")
         Log.i(TAG, "joker")
@@ -186,6 +220,11 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         val speedFloat = 1.0f
 
         currentSentenceIndex = index
+        
+        // 显示加载动画
+        runOnUiThread {
+            audioLoadingProgress.visibility = View.VISIBLE
+        }
 
         Thread {
             kotlin.synchronized(audioIndexQueue) {
@@ -196,8 +235,6 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                             currentSentenceIndex++
                             continue
                         }
-//                        Log.d("donghuiGenerate", "generating: " + currentSentenceIndex)
-//                        Log.d("donghuiGenerate", "size when generation: " + audioIndexQueue.size)
                         val audio = tts.generate(textStr, sid = sidInt, speed = speedFloat)
                         val filename = application.filesDir.absolutePath + "/generated${audioQueueCounter % audioQueueRemainder}.wav"
                         Log.d("donghuiGenerate", "generating: " + filename + " index: " + currentSentenceIndex)
@@ -226,6 +263,49 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         }.start()
     }
 
+    private fun playNextAudio() {
+        peededAudioQueueIndex = audioIndexQueue.peek()
+        val filename = audioIndexToFileMap[peededAudioQueueIndex]
+        peededAudioQueueIndex--
+
+        if (filename == null) {
+            Log.e("donghuiError", "找不到音频文件映射: index = $peededAudioQueueIndex, 重新生成")
+            onClickGenerate(peededAudioQueueIndex)
+            Handler(Looper.getMainLooper()).postDelayed({ playNextAudio() }, 500)
+            return
+        }
+
+        val file = File(filename)
+        if (!file.exists()) {
+            Log.e("donghuiError", "文件丢失: $filename, 重新生成")
+            onClickGenerate(peededAudioQueueIndex)
+            Handler(Looper.getMainLooper()).postDelayed({ playNextAudio() }, 500)
+            return
+        }
+
+        // 在主线程上执行 ExoPlayer 相关操作
+        runOnUiThread {
+            // 创建 MediaSource
+            val mediaItem = MediaItem.fromUri(Uri.fromFile(file))
+            val mediaSource = mediaSourceFactory.createMediaSource(mediaItem)
+
+            // 准备并播放
+            player?.setMediaSource(mediaSource)
+            player?.prepare()
+            player?.playWhenReady = true
+            player?.setPlaybackSpeed(0.85f)
+
+            // 隐藏加载动画
+            audioLoadingProgress.visibility = View.GONE
+
+            if(touchHandler.onLongPressFirstSentence){
+                touchHandler.onLongPressFirstSentence = false
+            }else{
+                touchHandler.highlightSentence(peededAudioQueueIndex!!)
+            }
+        }
+    }
+
     private fun onClickPlay() {
         if (audioIndexQueue.isEmpty()) {
             if (retryCount < maxRetry) {
@@ -234,60 +314,28 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             } else {
                 Log.e("donghuiError", "播放重试超过最大次数，停止播放")
                 retryCount = 0
+                runOnUiThread {
+                    audioLoadingProgress.visibility = View.GONE
+                }
             }
             return
         }
-        retryCount = 0 // 成功播放后，重置重试计数
-
-        peededAudioQueueIndex = audioIndexQueue.peek()
-        val filename = audioIndexToFileMap[peededAudioQueueIndex]
-        peededAudioQueueIndex-- //不知道为什么，play的index就是比generate的index大1
-        Log.d("donghuiGenerate", "playing: " + filename + " index: " + peededAudioQueueIndex)
-
-        if (filename == null) {
-            Log.e("donghuiError", "找不到音频文件映射: index = $peededAudioQueueIndex, 重新生成")
-            onClickGenerate(peededAudioQueueIndex)
-            Handler(Looper.getMainLooper()).postDelayed({ onClickPlay() }, 500)
-            return
-        }
-
-        val file = File(filename)
-        if (!file.exists()) {
-            Log.e("donghuiError", "文件丢失: $filename, 重新生成")
-            onClickGenerate(peededAudioQueueIndex)
-            Handler(Looper.getMainLooper()).postDelayed({ onClickPlay() }, 500)
-            return
-        }
-
-        mediaPlayer?.stop()
-        mediaPlayer?.release()
-        mediaPlayer = MediaPlayer.create(applicationContext, Uri.fromFile(file))
-
-        mediaPlayer?.setOnCompletionListener {
-            val removedIndex = audioIndexQueue.poll()
-            audioIndexToFileMap.remove(removedIndex)
-//            Log.d("donghuiGenerate","queue还剩下: ${audioIndexQueue.size}")
-
-            Handler(Looper.getMainLooper()).postDelayed({ onClickPlay() }, 200)
-        }
-
-        mediaPlayer?.playbackParams = mediaPlayer?.playbackParams!!.setSpeed(0.85f)
-        mediaPlayer?.start()
-        if(touchHandler.onLongPressFirstSentence){
-            touchHandler.onLongPressFirstSentence = false
-        }else{
-            touchHandler.highlightSentence(peededAudioQueueIndex!!)
-        }
+        retryCount = 0
+        playNextAudio()
     }
 
     private fun onClickPause() {
-        mediaPlayer?.pause()
-//        mediaPlayer = null
-        readingStatus = false
+        runOnUiThread {
+            player?.pause()
+            readingStatus = false
+        }
     }
+
     private fun onClickResume() {
-        readingStatus = true
-        mediaPlayer?.start()
+        runOnUiThread {
+            readingStatus = true
+            player?.play()
+        }
     }
 
     private fun initTts() {
@@ -484,8 +532,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         // 释放 TTS 资源
         if (tts != null) {
             onClickPause()
-            mediaPlayer?.stop()
-            mediaPlayer = null
+            runOnUiThread {
+                player?.release()
+                player = null
+            }
         }
         super.onDestroy()
     }
@@ -722,7 +772,9 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             kotlin.synchronized(peededAudioQueueIndex){
                 while (readingStatus) {
                     if (!sentences!!.isEmpty() && currentSentenceIndex < sentences!!.size && audioIndexQueue.size >= audioQueueRegularSize) {
-                        onClickPlay()
+                        runOnUiThread {
+                            onClickPlay()
+                        }
                         break
                     }
                     Thread.sleep(250)
