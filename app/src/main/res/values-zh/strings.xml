@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">有声书</string>
+    
+    <!-- Main UI -->
+    <string name="add_new_book">添加新书</string>
+    <string name="enter_book_name">请输入小说名称</string>
+    <string name="confirm_add">确认添加</string>
+    <string name="import_txt">导入TXT</string>
+    <string name="my_bookshelf">我的书架</string>
+    <string name="pause">暂停</string>
+    <string name="resume">继续</string>
+    <string name="select_txt_file">选择TXT文件</string>
+    <string name="loading_audio">音频加载中...</string>
+    
+    <!-- Error Messages -->
+    <string name="error_file_not_found">文件未找到</string>
+    <string name="error_max_retry">超过最大重试次数，停止播放</string>
+    <string name="error_empty_filename">文件名不能为空</string>
+    
+    <!-- Settings -->
+    <string name="settings">设置</string>
+    <string name="language">语言</string>
+    <string name="english">英文</string>
+    <string name="chinese">中文</string>
+</resources> 

@@ -1,6 +1,7 @@
 package com.k2fsa.sherpa.onnx
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.res.AssetManager
@@ -17,6 +18,7 @@ import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
@@ -82,6 +84,8 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     private val maxRetry = 50 // 最多重试 50 次（5 秒）
     private var peededAudioQueueIndex: Int = 0
 
+    private lateinit var settingsButton: ImageButton
+
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -91,7 +95,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         // 初始化 ExoPlayer
         player = ExoPlayer.Builder(this).build()
         val dataSourceFactory = DefaultDataSourceFactory(this,
-            Util.getUserAgent(this, "AudioBook"))
+            Util.getUserAgent(this, getString(R.string.app_name)))
         mediaSourceFactory = ProgressiveMediaSource.Factory(dataSourceFactory)
 
         // 设置播放监听器
@@ -141,6 +145,11 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         touchHandler!!.attach()
         touchHandler!!.textTouchHandlerUpdateMainActivityCallBack(this)
 
+        settingsButton = findViewById(R.id.settingsButton)
+        settingsButton.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+
         buttonReadFile.setOnClickListener {
             layoutNovelTitleForInput.visibility = View.VISIBLE
         }
@@ -157,10 +166,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
 
         buttonPause.setOnClickListener { v: View? ->
             if (readingStatus) {
-                buttonPause.setText("resume")
+                buttonPause.setText(R.string.resume)
                 onClickPause()
             } else {
-                buttonPause.setText("pause")
+                buttonPause.setText(R.string.pause)
                 onClickResume()
             }
         }
@@ -269,7 +278,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         peededAudioQueueIndex--
 
         if (filename == null) {
-            Log.e("donghuiError", "找不到音频文件映射: index = $peededAudioQueueIndex, 重新生成")
+            Log.e("donghuiError", getString(R.string.error_file_not_found))
             onClickGenerate(peededAudioQueueIndex)
             Handler(Looper.getMainLooper()).postDelayed({ playNextAudio() }, 500)
             return
@@ -277,7 +286,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
 
         val file = File(filename)
         if (!file.exists()) {
-            Log.e("donghuiError", "文件丢失: $filename, 重新生成")
+            Log.e("donghuiError", getString(R.string.error_file_not_found))
             onClickGenerate(peededAudioQueueIndex)
             Handler(Looper.getMainLooper()).postDelayed({ playNextAudio() }, 500)
             return
@@ -312,7 +321,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                 retryCount++
                 Handler(Looper.getMainLooper()).postDelayed({ onClickPlay() }, 100)
             } else {
-                Log.e("donghuiError", "播放重试超过最大次数，停止播放")
+                Log.e("donghuiError", getString(R.string.error_max_retry))
                 retryCount = 0
                 runOnUiThread {
                     audioLoadingProgress.visibility = View.GONE
@@ -802,5 +811,9 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                 super.onBackPressed()
             }
         }
+    }
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.onAttach(newBase))
     }
 }
