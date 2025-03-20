@@ -86,6 +86,21 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
 
     private lateinit var settingsButton: ImageButton
 
+    private var isWaitingForNextAudio = false
+    private val handler = Handler(Looper.getMainLooper())
+    private val checkQueueRunnable = object : Runnable {
+        override fun run() {
+            if (isWaitingForNextAudio) {
+                if (!audioIndexQueue.isEmpty()) {
+                    isWaitingForNextAudio = false
+                    playNextAudio()
+                } else {
+                    // 如果还在等待，继续检查
+                    handler.postDelayed(this, 100) // 每100ms检查一次
+                }
+            }
+        }
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -103,12 +118,16 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             override fun onPlaybackStateChanged(state: Int) {
                 when (state) {
                     Player.STATE_ENDED -> {
-                        // 当前音频播放完成
+                        Log.d("donghuiPlaying", "ended")
                         val removedIndex = audioIndexQueue.poll()
                         audioIndexToFileMap.remove(removedIndex)
                         
-                        // 如果队列中还有音频，继续播放
-                        if (!audioIndexQueue.isEmpty()) {
+                        // 如果队列为空，开始等待
+                        if (audioIndexQueue.isEmpty()) {
+                            Log.d("donghuiPlaying", "queue empty, waiting for next audio")
+                            isWaitingForNextAudio = true
+                            handler.post(checkQueueRunnable)
+                        } else {
                             playNextAudio()
                         }
                     }
@@ -249,7 +268,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                         Log.d("donghuiGenerate", "generating: " + filename + " index: " + currentSentenceIndex)
                         val ok = audio.samples.isNotEmpty() && audio.save(filename)
                         if (ok) {
-                            runOnUiThread {
+                            Thread {
                                 audioIndexToFileMap[currentSentenceIndex] = filename
                                 audioIndexQueue.add(currentSentenceIndex)
 
@@ -260,7 +279,8 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                                         audioIndexToFileMap.remove(oldestKey)
                                     }
                                 }
-                            }
+                                Log.d("donghuiPlaying", "queue size " + audioIndexQueue.size)
+                            }.start()
                         }
 
                         audioQueueCounter++
@@ -273,6 +293,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     }
 
     private fun playNextAudio() {
+        Log.d("donghuiPlaying", "next audio")
         peededAudioQueueIndex = audioIndexQueue.peek()
         val filename = audioIndexToFileMap[peededAudioQueueIndex]
         peededAudioQueueIndex--
@@ -538,6 +559,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     }
 
     override fun onDestroy() {
+        // 停止等待检查
+        isWaitingForNextAudio = false
+        handler.removeCallbacks(checkQueueRunnable)
+        
         // 释放 TTS 资源
         if (tts != null) {
             onClickPause()
