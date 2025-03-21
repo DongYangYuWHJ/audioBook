@@ -20,7 +20,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
 
     private final GestureDetector gestureDetector;
     private final TextView textView;
-    private List<String> sentences;
+    private List<SentenceSegmenter.SentenceInfo> sentences;
     private Spannable spannable;
     private int sentenceIndex;
     private Object highlightBackground;
@@ -29,7 +29,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
     private MainActivityCallback callback;
     public boolean onLongPressFirstSentence;
 
-    public TextTouchHandler(Context context, TextView textView, List<String> sentences) {
+    public TextTouchHandler(Context context, TextView textView, List<SentenceSegmenter.SentenceInfo> sentences) {
         Log.d("donghuiFatal", "进来了吗？？？");
         this.textView = textView;
         this.sentences = sentences;
@@ -44,7 +44,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
     public void textTouchHandlerLog(){
         Log.d("donghuiFatal", "咩咩咩咩吗");
     }
-    public void updateSentences(List<String> sentences){
+    public void updateSentences(List<SentenceSegmenter.SentenceInfo> sentences){
         this.sentences = sentences;
         spannable = new SpannableString(textView.getText());
     }
@@ -90,14 +90,11 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
         return sentenceIndex;
     }
 
-    private int getSentenceIndexFromOffset(TextView textView, List<String> sentences, int offset) {
-        String fullText = textView.getText().toString();
-        int charCount = 0;
+    private int getSentenceIndexFromOffset(TextView textView, List<SentenceSegmenter.SentenceInfo> sentences, int offset) {
 
         if(sentences != null){
             for (int i = 0; i < sentences.size(); i++) {
-                charCount += sentences.get(i).length()+1;//1是分隔符的数量
-                if (offset <= charCount) {
+                if (offset <= sentences.get(i).startPos+sentences.get(i).text.length()) {
                     return i;
                 }
             }
@@ -108,7 +105,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
 
 
     public void highlightSentence(int sentenceIndex) {
-
+        String fulltext = textView.getText().toString();
 
         // 获取所有的高亮 `BackgroundColorSpan`
 //        Log.d("donghuiSpan", "spanning at " + sentenceIndex);
@@ -119,13 +116,12 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
         }
 
         textView.setText(spannable); // 更新 `TextView`
-        int start = 0;
-        for(int i = 0; i < sentenceIndex; i++){
-            start += sentences.get(i).length()+1;//add the separator param
+        int start = sentences.get(sentenceIndex).startPos;
+        while(fulltext.charAt(start) == ' '){
+            start++;
         }
         start--;
-        offset = start;
-        int end = start + sentences.get(sentenceIndex).length()+1;
+        int end = start + sentences.get(sentenceIndex).text.length();
 
         if (start >= 0) {
             spannable.setSpan(highlightBackground, start+1, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);

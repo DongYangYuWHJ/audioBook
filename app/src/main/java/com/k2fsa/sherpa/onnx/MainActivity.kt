@@ -64,7 +64,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
 
     val splitRegex: String = "[。！？,. \n]"
     private val PICK_TXT_FILE = 1 // 请求代码
-    private var sentences: List<String>? = null
+    private var sentences: List<SentenceSegmenter.SentenceInfo>? = null
     var currentSentenceIndex: Int = 0
     private var readingStatus = false //true for reading now, false for not reading
 
@@ -258,7 +258,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             kotlin.synchronized(audioIndexQueue) {
                 while (true) {
                     if(audioIndexQueue.size <= audioQueueRegularSize){
-                        val textStr = sentences!!.getOrNull(currentSentenceIndex) ?: break
+                        val textStr = sentences!!.getOrNull(currentSentenceIndex)!!.text ?: break
                         if (textStr.isBlank()) {
                             currentSentenceIndex++
                             continue
@@ -600,10 +600,12 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         }
     }
 
-    private fun splitTextIntoSentences(text: String): List<String> {
-        return Arrays.asList(
-            *text.split(("(?<=)" + splitRegex + "").toRegex()).dropLastWhile { it.isEmpty() }
-                .toTypedArray())
+    private fun splitTextIntoSentences(text: String): List<SentenceSegmenter.SentenceInfo> {
+//        return Arrays.asList(
+//            *text.split(("(?<=)" + splitRegex + "").toRegex()).dropLastWhile { it.isEmpty() }
+//                .toTypedArray())
+        val sentenceSegmenter = SentenceSegmenter()
+        return sentenceSegmenter.segment(text)
     }
 
     private fun updateReadingText() {

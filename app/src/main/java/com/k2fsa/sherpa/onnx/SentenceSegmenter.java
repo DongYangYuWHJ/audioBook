@@ -29,9 +29,10 @@ public class SentenceSegmenter {
     private static final String DASHES = "——–—";
     private static final String SPECIAL_ENDINGS = "?!！？!？?！";
     private static final String DIALOGUE_MARKS = "—";
+    private static final String NEXT_LINE = "\n";
 
     // 组合所有分隔符
-    private static final String STRONG_SEPARATORS = CN_STRONG_SEPARATORS + EN_STRONG_SEPARATORS;
+    private static final String STRONG_SEPARATORS = CN_STRONG_SEPARATORS + EN_STRONG_SEPARATORS + NEXT_LINE;
     private static final String WEAK_SEPARATORS = CN_WEAK_SEPARATORS + EN_WEAK_SEPARATORS;
 
     // 英文缩写词列表
@@ -82,18 +83,32 @@ public class SentenceSegmenter {
         }
     }
 
+    // 添加 SentenceInfo 类
+    public static class SentenceInfo {
+        public final String text;
+        public final int startPos;  // 在原始文本中的起始位置
+
+        public SentenceInfo(String text, int startPos) {
+            this.text = text;
+            this.startPos = startPos;
+        }
+    }
+
     // 存储分句结果
-    private List<String> sentences;
+    private List<SentenceInfo> sentences;
     private StringBuilder currentSentence;
     private boolean inQuotation = false;
     private char currentQuotationMark = 0;
     private boolean isQuotationEnd = false;
+    private int lastProcessedPos = 0;  // 上次处理的位置
 
-    public List<String> segment(String text) {
-        sentences = new ArrayList<>();
+    public List<SentenceInfo> segment(String text) {
+        List<SentenceInfo> sentenceInfos = new ArrayList<>();
         currentSentence = new StringBuilder();
         inQuotation = false;
         isQuotationEnd = false;
+        int currentPos = 0;  // 当前处理位置
+        lastProcessedPos = 0;  // 上次处理的位置
 
         // 预处理文本
         text = preprocessText(text);
@@ -105,39 +120,41 @@ public class SentenceSegmenter {
 
             // 处理引号
             if (QUOTATION_SET.contains(c)) {
-                handleQuotation(c);
+                handleQuotation(c, sentenceInfos);
             }
 
             // 检查是否需要断句
             if (shouldBreakSentence(chars, i)) {
-                addSentence();
+                addSentence(sentenceInfos, lastProcessedPos);
+                lastProcessedPos = currentPos + 1;  // 更新上次处理的位置
                 isQuotationEnd = false;
             }
 
             // 处理长句
             if (currentSentence.length() >= MAX_LENGTH) {
-                handleLongSentence();
+                handleLongSentence(sentenceInfos, lastProcessedPos);
+                lastProcessedPos = currentPos + 1;  // 更新上次处理的位置
             }
+            
+            currentPos++;
         }
 
         // 处理最后一句
         if (currentSentence.length() > 0) {
-            addSentence();
+            addSentence(sentenceInfos, lastProcessedPos);
         }
 
         // 合并短句
-        mergeShortSentences();
+        mergeShortSentences(sentenceInfos);
 
         // 还原缩写中的点号
-        restoreAbbreviations();
+        restoreAbbreviations(sentenceInfos);
 
         // 后处理：过滤掉只包含标点符号的句子
-        postProcessSentences();
-
-        return sentences;
+        return postProcessSentences(sentenceInfos);
     }
 
-    private void handleQuotation(char quote) {
+    private void handleQuotation(char quote, List<SentenceInfo> sentenceInfos) {
         if (!inQuotation) {
             inQuotation = true;
             currentQuotationMark = quote;
@@ -150,7 +167,7 @@ public class SentenceSegmenter {
             if (currentSentence.length() > 0) {
                 char lastChar = currentSentence.charAt(currentSentence.length() - 1);
                 if (STRONG_SEPARATOR_SET.contains(lastChar) || SPECIAL_ENDING_SET.contains(lastChar)) {
-                    addSentence();
+                    addSentence(sentenceInfos, lastProcessedPos);
                     isQuotationEnd = false;
                 }
             }
@@ -180,7 +197,7 @@ public class SentenceSegmenter {
         return text;
     }
 
-    private void handleLongSentence() {
+    private void handleLongSentence(List<SentenceInfo> sentenceInfos, int startPos) {
         char[] chars = currentSentence.toString().toCharArray();
         int lastCommaIndex = -1;
         for (int i = 0; i < chars.length; i++) {
@@ -189,8 +206,11 @@ public class SentenceSegmenter {
             }
         }
         if (lastCommaIndex > 0) {
-            sentences.add(new String(chars, 0, lastCommaIndex + 1));
+            String firstPart = new String(chars, 0, lastCommaIndex + 1);
+            sentenceInfos.add(new SentenceInfo(firstPart, startPos));
             currentSentence = new StringBuilder(new String(chars, lastCommaIndex + 1, chars.length - lastCommaIndex - 1));
+            // 更新 lastProcessedPos 为当前句子的起始位置
+            lastProcessedPos = startPos + lastCommaIndex + 1;
         }
     }
 
@@ -241,93 +261,102 @@ public class SentenceSegmenter {
         return ENGLISH_CONTEXT_PATTERN.matcher(text).matches();
     }
 
-    private void addSentence() {
+    private void addSentence(List<SentenceInfo> sentenceInfos, int startPos) {
         String sentence = currentSentence.toString().trim();
         if (!sentence.isEmpty()) {
-            sentences.add(sentence);
+            sentenceInfos.add(new SentenceInfo(sentence, startPos));
         }
         currentSentence = new StringBuilder();
     }
 
-    private void mergeShortSentences() {
-        if (sentences.size() < 2) return;
+    private void mergeShortSentences(List<SentenceInfo> sentenceInfos) {
+        if (sentenceInfos.size() < 2) return;
 
-        List<String> mergedSentences = new ArrayList<>();
-        StringBuilder current = new StringBuilder(sentences.get(0));
+        List<SentenceInfo> mergedInfos = new ArrayList<>();
+        SentenceInfo current = sentenceInfos.get(0);
+        StringBuilder currentText = new StringBuilder(current.text);
+        int currentStartPos = current.startPos;  // 保持第一个句子的起始位置
+        int currentLength = current.text.length();  // 记录当前文本长度
 
-        for (int i = 1; i < sentences.size(); i++) {
-            String nextSentence = sentences.get(i);
-            String currentStr = current.toString();
+        for (int i = 1; i < sentenceInfos.size(); i++) {
+            SentenceInfo next = sentenceInfos.get(i);
+            String currentStr = currentText.toString();
 
             // 检查是否需要合并
             boolean shouldMerge = false;
             
             // 如果当前句子以冒号结尾，且下一句以引号开头，则合并
             if (currentStr.endsWith("：") || currentStr.endsWith(":")) {
-                if (nextSentence.startsWith("\"") || nextSentence.startsWith("\"") ||
-                    nextSentence.startsWith("'") || nextSentence.startsWith("'")) {
+                if (next.text.startsWith("\"") || next.text.startsWith("\"") ||
+                    next.text.startsWith("'") || next.text.startsWith("'")) {
                     shouldMerge = true;
                 }
             }
 
             // 如果当前句子太短，尝试与下一句合并
             if (!shouldKeepShort(currentStr) &&
-                    current.length() < MIN_LENGTH &&
-                    current.length() + nextSentence.length() <= MAX_LENGTH) {
+                    currentText.length() < MIN_LENGTH &&
+                    currentText.length() + next.text.length() <= MAX_LENGTH) {
                 shouldMerge = true;
             }
 
             if (shouldMerge) {
-                current.append(nextSentence);
+                currentText.append(next.text);
+                currentLength += next.text.length();  // 更新当前文本长度
             } else {
-                mergedSentences.add(currentStr);
-                current = new StringBuilder(nextSentence);
+                mergedInfos.add(new SentenceInfo(currentStr, currentStartPos));
+                current = next;
+                currentText = new StringBuilder(next.text);
+                currentStartPos = next.startPos;  // 更新起始位置
+                currentLength = next.text.length();  // 更新当前文本长度
             }
         }
 
         // 添加最后一句
-        if (current.length() > 0) {
-            mergedSentences.add(current.toString());
+        if (currentText.length() > 0) {
+            mergedInfos.add(new SentenceInfo(currentText.toString(), currentStartPos));
         }
 
-        sentences = mergedSentences;
+        sentenceInfos.clear();
+        sentenceInfos.addAll(mergedInfos);
     }
 
-    private void restoreAbbreviations() {
-        for (int i = 0; i < sentences.size(); i++) {
-            String sentence = sentences.get(i);
-            sentences.set(i, sentence.replace("#", "."));
+    private void restoreAbbreviations(List<SentenceInfo> sentenceInfos) {
+        for (int i = 0; i < sentenceInfos.size(); i++) {
+            SentenceInfo info = sentenceInfos.get(i);
+            // 替换 "#" 为 "."，保持原始位置不变
+            sentenceInfos.set(i, new SentenceInfo(info.text.replace("#", "."), info.startPos));
         }
     }
 
-    private void postProcessSentences() {
-        List<String> filteredSentences = new ArrayList<>();
-        for (String sentence : sentences) {
-            if (!isOnlyPunctuation(sentence)) {
-                filteredSentences.add(sentence);
+    private List<SentenceInfo> postProcessSentences(List<SentenceInfo> sentenceInfos) {
+        List<SentenceInfo> filteredInfos = new ArrayList<>();
+        
+        for (SentenceInfo info : sentenceInfos) {
+            // 如果句子长度大于等于最小长度，直接保留
+            if (info.text.length() >= MIN_LENGTH) {
+                filteredInfos.add(info);
+                continue;
+            }
+            
+            // 对于短句，检查是否包含中英文字符
+            boolean hasChineseOrEnglish = false;
+            for (char c : info.text.toCharArray()) {
+                // 检查是否是中文字符 (0x4e00-0x9fa5) 或英文字符
+                if ((c >= 0x4e00 && c <= 0x9fa5) || 
+                    (c >= 'a' && c <= 'z') || 
+                    (c >= 'A' && c <= 'Z')) {
+                    hasChineseOrEnglish = true;
+                    break;
+                }
+            }
+            
+            if (hasChineseOrEnglish) {
+                filteredInfos.add(info);
             }
         }
-        sentences = filteredSentences;
-    }
-
-    private boolean isOnlyPunctuation(String sentence) {
-        for (char c : sentence.toCharArray()) {
-            if (!Character.isWhitespace(c) && !isPunctuation(c)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean isPunctuation(char c) {
-        return STRONG_SEPARATOR_SET.contains(c) || 
-               WEAK_SEPARATOR_SET.contains(c) || 
-               QUOTATION_SET.contains(c) ||
-               BRACKET_SET.contains(c) ||
-               ELLIPSIS_SET.contains(c) ||
-               DASH_SET.contains(c) ||
-               SPECIAL_ENDING_SET.contains(c) ||
-               DIALOGUE_SET.contains(c);
+        
+        return filteredInfos;
     }
 
     private boolean shouldKeepShort(String sentence) {
