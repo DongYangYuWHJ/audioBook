@@ -6,19 +6,74 @@ import android.os.Bundle
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.Button
 import android.widget.Spinner
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import java.util.*
 
 class SettingsActivity : AppCompatActivity() {
     private lateinit var languageSpinner: Spinner
+    private lateinit var modelSpinner: Spinner
+    private var tempLanguage: String = ""
+    private var tempModel: String = ""
+    private var hasChanges: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
 
         languageSpinner = findViewById(R.id.languageSpinner)
+        modelSpinner = findViewById(R.id.modelSpinner)
+        val confirmButton = findViewById<Button>(R.id.confirmButton)
+        
+        // 初始化临时变量
+        tempLanguage = LocaleHelper.getLanguage(this)
+        tempModel = getSelectedModel()
+        
         setupLanguageSpinner()
+        setupModelSpinner()
+        
+        confirmButton.setOnClickListener {
+            if (hasChanges) {
+                // 保存语言设置
+                if (tempLanguage != LocaleHelper.getLanguage(this)) {
+                    LocaleHelper.setLocale(this@SettingsActivity, tempLanguage)
+                }
+                
+                // 保存模型设置
+                if (tempModel != getSelectedModel()) {
+                    saveSelectedModel(tempModel)
+                }
+                
+                // 如果有任何更改，重启应用
+                restartApp()
+            } else {
+                finish()
+            }
+        }
+    }
+
+    override fun onBackPressed() {
+        if (hasChanges) {
+            // 如果有未保存的更改，显示确认对话框
+            AlertDialog.Builder(this)
+                .setTitle(getString(R.string.unsaved_changes))
+                .setMessage(getString(R.string.save_changes_prompt))
+                .setPositiveButton(getString(R.string.save)) { _, _ ->
+                    // 保存更改并重启
+                    LocaleHelper.setLocale(this, tempLanguage)
+                    saveSelectedModel(tempModel)
+                    restartApp()
+                }
+                .setNegativeButton(getString(R.string.discard)) { _, _ ->
+                    // 放弃更改
+                    finish()
+                }
+                .show()
+        } else {
+            super.onBackPressed()
+        }
     }
 
     override fun attachBaseContext(newBase: Context) {
@@ -42,8 +97,7 @@ class SettingsActivity : AppCompatActivity() {
         languageSpinner.adapter = adapter
         
         // Set current language selection
-        val currentLang = LocaleHelper.getLanguage(this)
-        val index = languages.indexOfFirst { it.second == currentLang }
+        val index = languages.indexOfFirst { it.second == tempLanguage }
         if (index != -1) {
             languageSpinner.setSelection(index)
         }
@@ -51,9 +105,9 @@ class SettingsActivity : AppCompatActivity() {
         languageSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val selectedLang = languages[position].second
-                if (selectedLang != currentLang) {
-                    LocaleHelper.setLocale(this@SettingsActivity, selectedLang)
-                    restartApp()
+                if (selectedLang != tempLanguage) {
+                    tempLanguage = selectedLang
+                    hasChanges = true
                 }
             }
 
@@ -61,6 +115,53 @@ class SettingsActivity : AppCompatActivity() {
                 // Do nothing
             }
         }
+    }
+
+    private fun setupModelSpinner() {
+        val models = arrayOf(
+            getString(R.string.model_chinese) to "zh",
+            getString(R.string.model_english) to "en",
+            getString(R.string.model_mix) to "mix"
+        )
+
+        val adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            models.map { it.first }
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+
+        modelSpinner.adapter = adapter
+        
+        val index = models.indexOfFirst { it.second == tempModel }
+        if (index != -1) {
+            modelSpinner.setSelection(index)
+        }
+
+        modelSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selectedModel = models[position].second
+                if (selectedModel != tempModel) {
+                    tempModel = selectedModel
+                    hasChanges = true
+                }
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                // Do nothing
+            }
+        }
+    }
+
+    private fun getSelectedModel(): String {
+        val preferences = getSharedPreferences("settings", Context.MODE_PRIVATE)
+        return preferences.getString("selected_model", "zh") ?: "zh"
+    }
+
+    private fun saveSelectedModel(model: String) {
+        val preferences = getSharedPreferences("settings", Context.MODE_PRIVATE)
+        preferences.edit().putString("selected_model", model).apply()
     }
 
     private fun restartApp() {

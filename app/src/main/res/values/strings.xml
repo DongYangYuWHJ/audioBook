@@ -23,4 +23,13 @@
     <string name="language">Language</string>
     <string name="english">English</string>
     <string name="chinese">Chinese</string>
+    <string name="model">Model</string>
+    <string name="model_chinese">Chinese Model</string>
+    <string name="model_english">English Model</string>
+    <string name="model_mix">Mixed Model</string>
+    <string name="confirm">Confirm</string>
+    <string name="unsaved_changes">Unsaved Changes</string>
+    <string name="save_changes_prompt">Do you want to save your changes?</string>
+    <string name="save">Save</string>
+    <string name="discard">Discard</string>
 </resources>

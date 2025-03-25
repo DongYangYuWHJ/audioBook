@@ -23,4 +23,13 @@
     <string name="language">语言</string>
     <string name="english">英文</string>
     <string name="chinese">中文</string>
+    <string name="model">模型</string>
+    <string name="model_chinese">中文模型</string>
+    <string name="model_english">英文模型</string>
+    <string name="model_mix">混合模型</string>
+    <string name="confirm">确认</string>
+    <string name="unsaved_changes">未保存的更改</string>
+    <string name="save_changes_prompt">是否保存更改？</string>
+    <string name="save">保存</string>
+    <string name="discard">放弃</string>
 </resources> 
