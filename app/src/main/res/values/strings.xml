@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AudioBook</string>
+    
+    <!-- Main UI -->
+    <string name="add_new_book">Add New Book</string>
+    <string name="enter_book_name">Enter book name</string>
+    <string name="confirm_add">Confirm</string>
+    <string name="import_txt">Import TXT</string>
+    <string name="my_bookshelf">My Bookshelf</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <string name="select_txt_file">Select TXT File</string>
+    <string name="loading_audio">Loading audio...</string>
+    
+    <!-- Error Messages -->
+    <string name="error_file_not_found">File not found</string>
+    <string name="error_max_retry">Maximum retry times exceeded, playback stopped</string>
+    <string name="error_empty_filename">Filename cannot be empty</string>
+    
+    <!-- Settings -->
+    <string name="settings">Settings</string>
+    <string name="language">Language</string>
+    <string name="english">English</string>
+    <string name="chinese">Chinese</string>
+    <string name="model">Model</string>
+    <string name="model_chinese">Chinese Model</string>
+    <string name="model_english">English Model</string>
+    <string name="model_mix">Mixed Model</string>
+    <string name="confirm">Confirm</string>
+    <string name="unsaved_changes">Unsaved Changes</string>
+    <string name="save_changes_prompt">Do you want to save your changes?</string>
+    <string name="save">Save</string>
+    <string name="discard">Discard</string>
+</resources>
