@@ -86,7 +86,7 @@ public class SentenceSegmenter {
     // 添加 SentenceInfo 类
     public static class SentenceInfo {
         public int startPos;               // 在重组后文本中的起始位置
-        public final String text;          // 文本内容（包含空格和换行符）
+        public String text;                // 文本内容（包含空格和换行符）
 
         public SentenceInfo(String text, int startPos) {
             this.text = text;

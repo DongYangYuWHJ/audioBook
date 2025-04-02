@@ -41,12 +41,17 @@ import java.io.InputStreamReader
 import java.util.Arrays
 import java.util.LinkedList
 import java.util.Queue
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 
 const val TAG = "sherpa-onnx"
 
 
 
 class MainActivity : AppCompatActivity(), MainActivityCallback {
+    private val FILE_SUFFIX = ".txt"
+    private val gson = GsonBuilder().setPrettyPrinting().create()
+
     private lateinit var tts: OfflineTts
     private var player: ExoPlayer? = null
     private lateinit var audioLoadingProgress: ProgressBar
@@ -418,9 +423,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         val preferences = getSharedPreferences("settings", Context.MODE_PRIVATE)
         val preferenceModel = preferences.getString("selected_model", "en")
         if(preferenceModel == "en"){
-             modelDir = "vits-piper-en_US-amy-low"
-             modelName = "en_US-amy-low.onnx"
-             dataDir = "vits-piper-en_US-amy-low/espeak-ng-data"
+            //coqui:
+            modelDir = "vits-coqui-en-ljspeech"
+            modelName = "model.onnx"
+            dataDir = "vits-coqui-en-ljspeech/espeak-ng-data"
         }else{
             // Example 6
             // vits-melo-tts-zh_en
@@ -675,8 +681,6 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         } catch (e: IOException) {
             e.printStackTrace()
         }
-
-        Log.d("donghuiFile", "File stored at: " + filesDir.absolutePath)
     }
 
     /**
@@ -738,7 +742,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             }
             inputStream!!.close()
 
-            val fileName = "$novelTitle.txt" // 自定义文件名
+            val fileName = "$novelTitle" + FILE_SUFFIX // 自定义文件名
             saveFileToInternalStorage(fileName, stringBuilder.toString())
 
         } catch (e: Exception) {
@@ -768,7 +772,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             // 遍历内部存储中的文件
             novelTitles!!.clear()
             for (file in internalDir.listFiles()) {
-                if (file.isFile && file.name.endsWith(".txt")) {
+                if (file.isFile && file.name.endsWith(FILE_SUFFIX)) {
                     // 添加文件名（包含扩展名）
                     novelTitles!!.add(TitleViewNovelRecorded(file.name))
                 }
@@ -867,5 +871,51 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(LocaleHelper.onAttach(newBase))
+    }
+
+    private fun saveSentences(sentences: List<SentenceSegmenter.SentenceInfo>) {
+        try {
+            val filePath = getExternalFilesDir(null)?.absolutePath + "/sentences.json"
+            File(filePath).writeText(gson.toJson(sentences))
+            Toast.makeText(this, "保存成功", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "保存失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun loadSentences(): List<SentenceSegmenter.SentenceInfo>? {
+        return try {
+            val filePath = getExternalFilesDir(null)?.absolutePath + "/sentences.json"
+            val file = File(filePath)
+            if (file.exists()) {
+                gson.fromJson(file.readText(), Array<SentenceSegmenter.SentenceInfo>::class.java).toList()
+            } else null
+        } catch (e: Exception) {
+            Toast.makeText(this, "加载失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            null
+        }
+    }
+
+    private fun updateReadingText(sentenceSegmenter: SentenceSegmenter, text: String) {
+        // 先尝试加载已保存的句子
+        val loadedSentences = loadSentences()
+        if (loadedSentences != null) {
+            // 如果有保存的句子，直接使用
+            val combinedText = sentenceSegmenter.combineText(loadedSentences)
+            txtContent.text = combinedText
+            currentSentenceIndex = 0
+            touchHandler.updateSentences(loadedSentences)
+            return
+        }
+
+        // 如果没有保存的句子，进行分割
+        val sentences = sentenceSegmenter.segment(text)
+        // 保存分割后的句子
+        saveSentences(sentences)
+        
+        val combinedText = sentenceSegmenter.combineText(sentences)
+        txtContent.text = combinedText
+        currentSentenceIndex = 0
+        touchHandler.updateSentences(sentences)
     }
 }
