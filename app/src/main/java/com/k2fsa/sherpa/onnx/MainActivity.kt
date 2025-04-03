@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.res.AssetManager
+import android.graphics.Color
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
@@ -13,7 +14,10 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.Spannable
+import android.text.SpannableStringBuilder
 import android.text.method.ScrollingMovementMethod
+import android.text.style.BackgroundColorSpan
 import android.util.Log
 import android.view.View
 import android.widget.Button
@@ -106,6 +110,11 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             }
         }
     }
+
+    private val sentencesPerPage = 50 // 每页显示的句子数
+    private var currentPage = 0
+    private var totalPages = 0
+    private var isLoadingPage = false
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -209,6 +218,8 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         adapter = Adapter_TitleViewNovelRecorded(this, novelTitles, this)
         recyclerView.setAdapter(adapter)
         recyclerView.setLayoutManager(LinearLayoutManager(this))
+
+        setupPagination()
     }
 
     private fun initAudioTrack() {
@@ -742,6 +753,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             val combinedText = sentenceSegmenter.combineText(sentences)
             txtContent.text = combinedText
             updateReadingText()
+            
+            // 设置分页
+            setupPagination()
+            loadPage(0) // 加载第一页
         }
     }
 
@@ -932,5 +947,86 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         txtContent.text = combinedText
         currentSentenceIndex = 0
         touchHandler.updateSentences(sentences)
+    }
+
+    private fun setupPagination() {
+        if (sentences == null) return
+        
+        // 计算总页数
+        totalPages = (sentences!!.size + sentencesPerPage - 1) / sentencesPerPage
+        Log.d("Pagination", "Total sentences: ${sentences!!.size}, Total pages: $totalPages")
+        
+        // 设置滚动监听
+        txtContent.setOnScrollChangeListener { v, scrollX, scrollY, oldScrollX, oldScrollY ->
+            if (!isLoadingPage) {
+                val layout = txtContent.layout
+                if (layout != null) {
+                    val firstVisibleLine = layout.getLineForVertical(scrollY)
+                    val lastVisibleLine = layout.getLineForVertical(scrollY + txtContent.height)
+                    
+                    // 检测是否需要加载下一页
+                    if (lastVisibleLine >= layout.lineCount - 10) {
+                        loadNextPage()
+                    }
+                    
+                    // 检测是否需要加载上一页
+                    if (firstVisibleLine <= 10) {
+                        loadPreviousPage()
+                    }
+                }
+            }
+        }
+    }
+    
+    private fun loadPage(page: Int) {
+        if (page < 0 || page >= totalPages || isLoadingPage || sentences == null) return
+        
+        isLoadingPage = true
+        
+        val startIndex = page * sentencesPerPage
+        val endIndex = minOf(startIndex + sentencesPerPage, sentences!!.size)
+        
+        // 获取当前页的句子
+        val pageSentences = sentences!!.subList(startIndex, endIndex)
+        
+        // 组合当前页的文本
+        val sentenceSegmenter = SentenceSegmenter()
+        val pageText = sentenceSegmenter.combineText(pageSentences)
+        
+        // 更新UI
+        updatePageUI(page, pageText, pageSentences, startIndex)
+        isLoadingPage = false
+    }
+    
+    private fun updatePageUI(page: Int, text: String, sentences: List<SentenceSegmenter.SentenceInfo>, startIndex: Int) {
+        val spannable = SpannableStringBuilder(text)
+        var currentOffset = 0
+        
+        for (sentence in sentences) {
+            spannable.setSpan(
+                BackgroundColorSpan(Color.parseColor("#80FFA500")),
+                currentOffset,
+                currentOffset + sentence.text.length,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            currentOffset += sentence.text.length
+        }
+        
+        // 更新当前页的文本
+        txtContent.text = spannable
+    }
+    
+    private fun loadNextPage() {
+        if (currentPage < totalPages - 1) {
+            currentPage++
+            loadPage(currentPage)
+        }
+    }
+    
+    private fun loadPreviousPage() {
+        if (currentPage > 0) {
+            currentPage--
+            loadPage(currentPage)
+        }
     }
 }
