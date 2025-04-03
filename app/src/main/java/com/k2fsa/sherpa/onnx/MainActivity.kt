@@ -49,7 +49,7 @@ const val TAG = "sherpa-onnx"
 
 
 class MainActivity : AppCompatActivity(), MainActivityCallback {
-    private val FILE_SUFFIX = ".txt"
+    private val FILE_SUFFIX = ".json"
     private val gson = GsonBuilder().setPrettyPrinting().create()
 
     private lateinit var tts: OfflineTts
@@ -604,7 +604,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     private fun openFilePicker() {
         val intent = Intent(Intent.ACTION_GET_CONTENT)
         intent.setType("text/plain") // 限制为TXT文件
-        startActivityForResult(Intent.createChooser(intent, "选择TXT文件"), PICK_TXT_FILE)
+        startActivityForResult(Intent.createChooser(intent, "选择要录入的TXT文件"), PICK_TXT_FILE)
     }
 
     fun alreadyInputNovelButtonClicker(title: String?) {
@@ -626,46 +626,16 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         }
     }
 
-    private fun splitTextIntoSentences(text: String): List<SentenceSegmenter.SentenceInfo> {
-//        return Arrays.asList(
-//            *text.split(("(?<=)" + splitRegex + "").toRegex()).dropLastWhile { it.isEmpty() }
-//                .toTypedArray())
-        val sentenceSegmenter = SentenceSegmenter()
-        return sentenceSegmenter.segment(text)
-    }
-
     private fun updateReadingText() {
-        val sentenceSegmenter = SentenceSegmenter()
-        sentences = sentenceSegmenter.segment(txtContent.text.toString())
+//        val sentenceSegmenter = SentenceSegmenter()
+//        sentences = sentenceSegmenter.segment(txtContent.text.toString())
         
         // 使用重组后的文本更新 UI
-        val combinedText = sentenceSegmenter.combineText(sentences)
-        txtContent.text = combinedText
+//        val combinedText = sentenceSegmenter.combineText(sentences)
+//        txtContent.text = combinedText
         
         currentSentenceIndex = 0
         touchHandler.updateSentences(sentences)
-    }
-
-    protected fun showFileNameInputDialog(fileUri: Uri) {
-        // 创建一个 EditText 让用户输入文件名
-        val novelTitleForInput = EditText(this)
-        novelTitleForInput.hint = "请输入文件名（不含扩展名）"
-
-        AlertDialog.Builder(this)
-            .setTitle("保存文件")
-            .setMessage("请输入文件名")
-            .setView(novelTitleForInput) // 添加输入框
-            .setPositiveButton("保存") { dialog: DialogInterface?, which: Int ->
-                val fileName = novelTitleForInput.text.toString().trim { it <= ' ' }
-                if (!fileName.isEmpty()) {
-                    // 保存文件到内部存储
-                    readTextFileWithEncoding(fileUri, fileName)
-                } else {
-                    Toast.makeText(this, "文件名不能为空", Toast.LENGTH_SHORT).show()
-                }
-            }
-            .setNegativeButton("取消", null)
-            .show()
     }
 
     /**
@@ -675,9 +645,17 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
      */
     private fun saveFileToInternalStorage(fileName: String, content: String) {
         try {
+            // 分割文本并保存 sentences 到 JSON 文件
+            val sentenceSegmenter = SentenceSegmenter()
+            val sentences = sentenceSegmenter.segment(content)
+            val sentencesJson = gson.toJson(sentences)
+            
+            // 保存 sentences 到 JSON 文件
             val fos = openFileOutput(fileName, MODE_PRIVATE)
-            fos.write(content.toByteArray())
+            fos.write(sentencesJson.toByteArray())
             fos.close()
+
+            Log.d("donghuiFile", "File stored at: " + filesDir.absolutePath)
         } catch (e: IOException) {
             e.printStackTrace()
         }
@@ -686,7 +664,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     /**
      * 读取已录入的文件
      */
-    private fun loadFileFromInternalStorage(fileName: String?): String? {
+    private fun loadFileFromInternalStorage(fileName: String?): List<SentenceSegmenter.SentenceInfo>? {
         try {
             val fis = openFileInput(fileName)
             val reader = BufferedReader(InputStreamReader(fis))
@@ -694,10 +672,12 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             var line: String?
 
             while ((reader.readLine().also { line = it }) != null) {
-                stringBuilder.append(line).append("\n")
+                stringBuilder.append(line)
             }
             fis.close()
-            return stringBuilder.toString()
+            
+            // 将 JSON 字符串转换为 List<SentenceInfo>
+            return gson.fromJson(stringBuilder.toString(), Array<SentenceSegmenter.SentenceInfo>::class.java).toList()
         } catch (e: IOException) {
             e.printStackTrace()
             return null
@@ -757,7 +737,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     fun selectFromAlreadyReadNovels(fileName: String?) {
         val savedContent = loadFileFromInternalStorage(fileName)
         if (savedContent != null) {
-            txtContent!!.text = savedContent
+            sentences = savedContent
+            val sentenceSegmenter = SentenceSegmenter()
+            val combinedText = sentenceSegmenter.combineText(sentences)
+            txtContent.text = combinedText
             updateReadingText()
         }
     }
