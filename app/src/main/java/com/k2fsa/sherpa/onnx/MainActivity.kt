@@ -597,6 +597,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                 player = null
             }
         }
+        
+        // 清理音频文件
+        clearAudioFiles()
+        
         super.onDestroy()
     }
 
@@ -807,9 +811,46 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         currentSentenceIndex = preferences.getInt(fileName + audioIndex, 0) // 默认位置为 0
     }
 
+    private fun clearAudioFiles() {
+        // 删除所有已生成的音频文件
+        for (i in 0 until audioQueueRemainder) {
+            val file = File(application.filesDir.absolutePath + "/generated${i}.wav")
+            if (file.exists()) {
+                file.delete()
+            }
+        }
+    }
+
+    private fun clearAllQueues() {
+        // 清空音频队列
+        audioIndexQueue.clear()
+        audioIndexToFileMap.clear()
+        
+        // 停止当前播放
+        runOnUiThread {
+            player?.stop()
+            player?.clearMediaItems()
+        }
+        
+        // 清理音频文件
+        clearAudioFiles()
+        
+        // 重置计数器
+        audioQueueCounter = 0
+        peededAudioQueueIndex = 0
+        retryCount = 0
+        isWaitingForNextAudio = false
+        handler.removeCallbacks(checkQueueRunnable)
+    }
+
     override fun ttsReadWhenLongPress(index: Int) {
-        onClickPause()
+        // 清空所有队列和状态
+        clearAllQueues()
+        
+        // 设置新的起始位置
         currentSentenceIndex = index
+        
+        // 开始生成和播放
         onClickGenerate(currentSentenceIndex)
         reading()
     }
