@@ -597,10 +597,6 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                 player = null
             }
         }
-        
-        // 清理音频文件
-        clearAudioFiles()
-        
         super.onDestroy()
     }
 
@@ -811,16 +807,6 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         currentSentenceIndex = preferences.getInt(fileName + audioIndex, 0) // 默认位置为 0
     }
 
-    private fun clearAudioFiles() {
-        // 删除所有已生成的音频文件
-        for (i in 0 until audioQueueRemainder) {
-            val file = File(application.filesDir.absolutePath + "/generated${i}.wav")
-            if (file.exists()) {
-                file.delete()
-            }
-        }
-    }
-
     private fun clearAllQueues() {
         // 清空音频队列
         audioIndexQueue.clear()
@@ -832,8 +818,13 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             player?.clearMediaItems()
         }
         
-        // 清理音频文件
-        clearAudioFiles()
+        // 删除所有已生成的音频文件
+        for (i in 0 until audioQueueRemainder) {
+            val file = File(application.filesDir.absolutePath + "/generated${i}.wav")
+            if (file.exists()) {
+                file.delete()
+            }
+        }
         
         // 重置计数器
         audioQueueCounter = 0

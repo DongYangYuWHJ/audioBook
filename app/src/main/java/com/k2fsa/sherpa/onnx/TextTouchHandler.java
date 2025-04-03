@@ -7,7 +7,7 @@ import android.content.Context;
 import android.graphics.Color;
 import android.text.Layout;
 import android.text.Spannable;
-import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
 import android.text.style.BackgroundColorSpan;
 import android.util.Log;
 import android.view.GestureDetector;
@@ -21,21 +21,22 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
     private final GestureDetector gestureDetector;
     private final TextView textView;
     private List<SentenceSegmenter.SentenceInfo> sentences;
-    private Spannable spannable;
+    private SpannableStringBuilder spannable;
     private int sentenceIndex;
     private Object highlightBackground;
     private int offset;
     private Context context;
     private MainActivityCallback callback;
     public boolean onLongPressFirstSentence;
+    private int currentHighlightedIndex = -1;
 
     public TextTouchHandler(Context context, TextView textView, List<SentenceSegmenter.SentenceInfo> sentences) {
         Log.d("donghuiFatal", "进来了吗？？？");
         this.textView = textView;
         this.sentences = sentences;
         this.gestureDetector = new GestureDetector(context, this);
-        spannable = new SpannableString(textView.getText());
-        highlightBackground = new BackgroundColorSpan(Color.YELLOW);
+        spannable = new SpannableStringBuilder(textView.getText());
+        highlightBackground = new BackgroundColorSpan(Color.parseColor("#80FFA500")); // 半透明暗橘色
         this.context = context;
     }
     public void textTouchHandlerUpdateMainActivityCallBack(MainActivityCallback callback){
@@ -46,7 +47,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
     }
     public void updateSentences(List<SentenceSegmenter.SentenceInfo> sentences){
         this.sentences = sentences;
-        spannable = new SpannableString(textView.getText());
+        spannable = new SpannableStringBuilder(textView.getText());
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -67,16 +68,14 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
         float y = e.getY();
 
         Layout layout = textView.getLayout();
-        if (layout == null) return; // 避免 NullPointerException
+        if (layout == null) return;
 
-        // 计算文本的行号（全局滚动影响）
         int line = layout.getLineForVertical((int) (y + textView.getScrollY()));
         Log.d("donghuiLine", "line: " + line);
 
-        // 计算该行的字符索引
         int offset = layout.getOffsetForHorizontal(line, x);
         Log.d("donghuiOffset", ""+offset);
-        // 找到句子索引
+        
         sentenceIndex = getSentenceIndexFromOffset(textView, sentences, offset);
         Log.d("donghuiSentenceIndex", ""+sentenceIndex);
         if (sentenceIndex != -1) {
@@ -110,12 +109,17 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
 
         // 获取当前句子的信息
         SentenceSegmenter.SentenceInfo sentence = sentences.get(sentenceIndex);
-        String text = textView.getText().toString();
         
-        // 移除旧的高亮
-        BackgroundColorSpan[] spans = spannable.getSpans(0, spannable.length(), BackgroundColorSpan.class);
-        for (BackgroundColorSpan span : spans) {
-            spannable.removeSpan(span);
+        // 只清除当前高亮的句子
+        if (currentHighlightedIndex != -1) {
+            SentenceSegmenter.SentenceInfo oldSentence = sentences.get(currentHighlightedIndex);
+            BackgroundColorSpan[] spans = spannable.getSpans(
+                oldSentence.startPos, 
+                oldSentence.startPos + oldSentence.text.length(), 
+                BackgroundColorSpan.class);
+            for (BackgroundColorSpan span : spans) {
+                spannable.removeSpan(span);
+            }
         }
 
         // 使用实际的文本位置和长度
@@ -124,13 +128,14 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
         
         // 添加日志以便调试
         Log.d("donghuiSpan", "Highlighting from " + start + " to " + end);
-        Log.d("donghuiSpan", "Text: [" + text.substring(start, end) + "]");
+        Log.d("donghuiSpan", "Text: [" + spannable.subSequence(start, end) + "]");
         Log.d("donghuiSpan", "Real Text: [" + sentence.text + "]");
 
         // 设置新的高亮
         if (start >= 0 && end <= spannable.length()) {
             spannable.setSpan(highlightBackground, start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             textView.setText(spannable);
+            currentHighlightedIndex = sentenceIndex;
         }
     }
 
