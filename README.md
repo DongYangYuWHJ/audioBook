@@ -1,1 +1,9 @@
 基于sherpa-onnx tts开发的听书软件，目前使用的是vits melo tts中英文模型
+
+我现在想在@MainActivity.kt 里面实现针对大型文件的优化方法
+思路：
+把每100个sentenceSegmenter分割好的sentence作为一页，然后把整个大型文件分割成这样的一页一页的
+每一页都是一个textview，然后用scrollView把他们连起来，这样UI资源的耗能是否会降低很多，比起把一个特别大的文本全都输入textview里面
+但是仅仅这样是不够的，我们还需要一个把全局sentence index转化成scrollpage里面单独sentenceindex的function，这样我们高光的时候可以直接用scrollpage里面的
+你认为这个方案是否可行，如果可行，有没有其他的隐患或者我没有考虑到的地方
+

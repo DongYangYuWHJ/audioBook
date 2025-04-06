@@ -434,11 +434,13 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         val preferences = getSharedPreferences("settings", Context.MODE_PRIVATE)
         val preferenceModel = preferences.getString("selected_model", "en")
         if(preferenceModel == "en"){
+            Log.d("donghuiModel", "yingwen")
             //coqui:
             modelDir = "vits-coqui-en-ljspeech"
             modelName = "model.onnx"
             dataDir = "vits-coqui-en-ljspeech/espeak-ng-data"
         }else{
+            Log.d("donghuiModel", "中文")
             // Example 6
             // vits-melo-tts-zh_en
             // https://k2-fsa.github.io/sherpa/onnx/tts/pretrained_models/vits.html#vits-melo-tts-zh-en-chinese-english-1-speaker
