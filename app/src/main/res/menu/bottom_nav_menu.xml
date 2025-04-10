@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/navigation_txt"
+        android:icon="@drawable/ic_txt_file"
+        android:title="TXT文件" />
+
+    <item
+        android:id="@+id/navigation_clipboard"
+        android:icon="@drawable/ic_clipboard"
+        android:title="粘贴板" />
+
+    <item
+        android:id="@+id/navigation_settings"
+        android:icon="@drawable/ic_settings"
+        android:title="设置" />
+</menu> 

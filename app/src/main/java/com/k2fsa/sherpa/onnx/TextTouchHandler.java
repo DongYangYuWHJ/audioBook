@@ -48,6 +48,8 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
     public void updateSentences(List<SentenceSegmenter.SentenceInfo> sentences){
         this.sentences = sentences;
         spannable = new SpannableStringBuilder(textView.getText());
+        Log.d("DonghuiLoadClip", "文本具体修改位置");
+        Log.d("DonghuiLoadClip", "" + textView.getText());
     }
 
     @SuppressLint("ClickableViewAccessibility")

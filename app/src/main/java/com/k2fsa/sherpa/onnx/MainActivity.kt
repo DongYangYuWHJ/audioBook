@@ -2,7 +2,6 @@ package com.k2fsa.sherpa.onnx
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.DialogInterface
 import android.content.Intent
 import android.content.res.AssetManager
 import android.graphics.Color
@@ -22,12 +21,12 @@ import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
-import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.exoplayer2.ExoPlayer
@@ -36,31 +35,28 @@ import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
+import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.gson.GsonBuilder
 import org.mozilla.universalchardet.UniversalDetector
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStreamReader
-import java.util.Arrays
 import java.util.LinkedList
 import java.util.Queue
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
 
 const val TAG = "sherpa-onnx"
 
-
-
 class MainActivity : AppCompatActivity(), MainActivityCallback {
     private val FILE_SUFFIX = ".json"
+    private val CLIPBOARD_FILE_SUFFIX = ".clipboard.json"  // 新增粘贴板文件后缀
     private val gson = GsonBuilder().setPrettyPrinting().create()
 
     private lateinit var tts: OfflineTts
     private var player: ExoPlayer? = null
     private lateinit var audioLoadingProgress: ProgressBar
     private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
-
 
     lateinit private var txtContent: TextView
     lateinit private var touchHandler: TextTouchHandler
@@ -93,7 +89,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     private val maxRetry = 50 // 最多重试 50 次（5 秒）
     private var peededAudioQueueIndex: Int = 0
 
-    private lateinit var settingsButton: ImageButton
+    private lateinit var bottomNavigation: BottomNavigationView
+    private lateinit var readNovelPage: ConstraintLayout
+    private lateinit var clipboardLayout: LinearLayout
+    private lateinit var settingsLayout: LinearLayout
 
     private var isWaitingForNextAudio = false
     private val handler = Handler(Looper.getMainLooper())
@@ -116,10 +115,21 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     private var totalPages = 0
     private var isLoadingPage = false
 
+    private lateinit var editClipboard: EditText
+//    private lateinit var viewClipboard: TextView
+    private lateinit var btnModify: Button
+    private lateinit var btnClose: Button
+    private lateinit var btnConfirm: Button
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // 初始化视图
+        initViews()
+        // 设置底部导航
+        setupBottomNavigation()
 
         // 初始化 ExoPlayer
         player = ExoPlayer.Builder(this).build()
@@ -178,11 +188,6 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         touchHandler!!.attach()
         touchHandler!!.textTouchHandlerUpdateMainActivityCallBack(this)
 
-        settingsButton = findViewById(R.id.settingsButton)
-        settingsButton.setOnClickListener {
-            startActivity(Intent(this, SettingsActivity::class.java))
-        }
-
         buttonReadFile.setOnClickListener {
             layoutNovelTitleForInput.visibility = View.VISIBLE
         }
@@ -220,6 +225,219 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         recyclerView.setLayoutManager(LinearLayoutManager(this))
 
         setupPagination()
+
+        initClipboardPage()
+    }
+
+    private fun initViews() {
+        // 底部导航栏
+        bottomNavigation = findViewById(R.id.bottomNavigation)
+
+        // 三个主要界面
+        readNovelPage = findViewById(R.id.read_novel_page)
+        clipboardLayout = findViewById(R.id.clipboardLayout)
+        settingsLayout = findViewById(R.id.settingsLayout)
+
+        // 默认显示TXT文件页面
+        showPage(Page.TXT)
+    }
+
+    private fun setupBottomNavigation() {
+        bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.navigation_txt -> {
+                    showPage(Page.TXT)
+                    true
+                }
+                R.id.navigation_clipboard -> {
+                    showPage(Page.CLIPBOARD)
+                    true
+                }
+                R.id.navigation_settings -> {
+                    // 直接启动设置页面
+                    startActivity(Intent(this, SettingsActivity::class.java))
+                    false // 返回 false 表示不切换底部导航栏的选中状态
+                }
+                else -> false
+            }
+        }
+    }
+
+    // 页面枚举
+    private enum class Page {
+        TXT, CLIPBOARD, SETTINGS
+    }
+
+    private fun showPage(page: Page) {
+        // 保存当前页面的状态（如果需要）
+        saveCurrentPageState()
+
+        // 获取顶部工具栏
+        val topToolbar = findViewById<View>(R.id.top_toolbar)
+
+        // 切换页面显示
+        when (page) {
+            Page.TXT -> {
+                readNovelPage.visibility = View.VISIBLE
+                clipboardLayout.visibility = View.GONE
+                settingsLayout.visibility = View.GONE
+                topToolbar.visibility = View.VISIBLE
+            }
+            Page.CLIPBOARD -> {
+                readNovelPage.visibility = View.VISIBLE
+                clipboardLayout.visibility = View.VISIBLE
+                settingsLayout.visibility = View.GONE
+                topToolbar.visibility = View.GONE
+                // 初始化粘贴板页面
+                initClipboardPage()
+            }
+            Page.SETTINGS -> {
+                readNovelPage.visibility = View.GONE
+                clipboardLayout.visibility = View.GONE
+                settingsLayout.visibility = View.VISIBLE
+                topToolbar.visibility = View.GONE
+            }
+        }
+    }
+
+    private fun saveCurrentPageState() {
+        // 获取当前显示的页面
+        val currentPage = when {
+            readNovelPage.visibility == View.VISIBLE -> Page.TXT
+            clipboardLayout.visibility == View.VISIBLE -> Page.CLIPBOARD
+            settingsLayout.visibility == View.VISIBLE -> Page.SETTINGS
+            else -> return
+        }
+
+        // 根据当前页面保存状态
+        when (currentPage) {
+            Page.TXT -> {
+                // 保存TXT阅读页面的状态
+            }
+            Page.CLIPBOARD -> {
+                // 保存粘贴板页面的状态
+                saveClipboardState()
+            }
+            Page.SETTINGS -> {
+                // 保存设置页面的状态
+            }
+        }
+    }
+
+    private fun saveClipboardState() {
+        val editClipboard = findViewById<EditText>(R.id.editClipboard)
+        val content = editClipboard.text.toString()
+        if (content.isNotEmpty()) {
+            // 保存为未命名的JSON文件
+            saveUnnamedClipboardContent(content)
+        }
+    }
+
+    private fun saveUnnamedClipboardContent(content: String) {
+        // 生成未命名文件的名称（使用时间戳）
+        val timestamp = System.currentTimeMillis()
+        val fileName = "unnamed_$timestamp.json"
+
+        // 使用现有的保存方法保存内容
+        saveFileToInternalStorage(fileName, content)
+    }
+
+    private fun initClipboardPage() {
+        editClipboard = findViewById(R.id.editClipboard)
+        btnModify = findViewById(R.id.btnModify)
+        btnClose = findViewById(R.id.btnClose)
+        btnConfirm = findViewById(R.id.btnConfirm)
+
+        // 设置按钮点击事件
+        btnModify.setOnClickListener {
+            // 切换到编辑模式
+            editClipboard.visibility = View.VISIBLE
+            txtContent.visibility = View.GONE
+            btnModify.visibility = View.GONE
+            btnConfirm.visibility = View.VISIBLE
+        }
+
+        btnClose.setOnClickListener {
+            // 关闭粘贴板界面，返回阅读界面
+            clipboardLayout.visibility = View.GONE
+            // 清空编辑内容
+            editClipboard.setText("")
+            txtContent.text = ""
+        }
+
+        btnConfirm.setOnClickListener {
+            // 保存当前编辑的内容
+            val content = editClipboard.text.toString()
+//            val segmenter = SentenceSegmenter()
+//            sentences = segmenter.segment(content)
+            if (content.isNotEmpty()) {
+                // 更新显示
+                txtContent.text = content
+//                updateHighLightingText()
+                // 切换到查看模式
+                editClipboard.visibility = View.GONE
+                txtContent.visibility = View.VISIBLE
+                btnModify.visibility = View.VISIBLE
+                btnConfirm.visibility = View.GONE
+                // 自动保存
+                autoSaveClipboardContent()
+                loadSavedClipboardContent()
+                clearAllQueues()
+            }
+        }
+
+        // 初始化时显示查看模式
+        editClipboard.visibility = View.GONE
+        txtContent.visibility = View.VISIBLE
+        btnModify.visibility = View.VISIBLE
+        btnConfirm.visibility = View.GONE
+    }
+
+    private fun initSettingsPage() {
+        // 初始化设置页面
+        // 将在后续实现
+    }
+
+    private fun handleConfirmClick() {
+        // 将在后续实现文件保存对话框
+    }
+
+    private fun autoSaveClipboardContent() {
+        val content = txtContent.text.toString()
+        if (content.isNotEmpty()) {
+            // 生成时间戳文件名
+            val timestamp = System.currentTimeMillis()
+            val fileName = "clipboard_$timestamp$CLIPBOARD_FILE_SUFFIX"
+            
+            // 保存文件名到 SharedPreferences
+            getSharedPreferences("clipboard_content", Context.MODE_PRIVATE)
+                .edit()
+                .putString("current_filename", fileName)
+                .apply()
+            Log.d("donghuiLoadClip", "预备"+fileName + " " + content)
+            // 保存为粘贴板文件
+            saveFileToInternalStorage(fileName, content, true)
+        }
+    }
+
+    private fun loadSavedClipboardContent() {
+        // 从 SharedPreferences 获取文件名
+        val fileName = getSharedPreferences("clipboard_content", Context.MODE_PRIVATE)
+            .getString("current_filename", "")
+            
+        if (fileName?.isNotEmpty() == true) {
+            // 使用文件名加载文件内容
+            sentences = loadFileFromInternalStorage(fileName)
+            Log.d("donghuiLoadClip", "成功?"+fileName)
+            if (sentences != null) {
+                Log.d("donghuiLoadClip", "成功捏"+ sentences!!.get(0).text)
+                // 更新显示
+                val sentenceSegmenter = SentenceSegmenter()
+                val combinedText = sentenceSegmenter.combineText(sentences!!)
+                txtContent.text = combinedText
+                updateHighLightingText()
+            }
+        }
     }
 
     private fun initAudioTrack() {
@@ -639,7 +857,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         }
     }
 
-    private fun updateReadingText() {
+    private fun updateHighLightingText() {
 //        val sentenceSegmenter = SentenceSegmenter()
 //        sentences = sentenceSegmenter.segment(txtContent.text.toString())
         
@@ -648,7 +866,9 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
 //        txtContent.text = combinedText
         
         currentSentenceIndex = 0
+        Log.d("DonghuiLoadClip", "文本准备修改位置1")
         touchHandler.updateSentences(sentences)
+        Log.d("DonghuiLoadClip", "文本准备修改位置2")
     }
 
     /**
@@ -656,12 +876,14 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
      * @param fileName
      * @param content
      */
-    private fun saveFileToInternalStorage(fileName: String, content: String) {
+    private fun saveFileToInternalStorage(fileName: String, content: String, isClipboard: Boolean = false) {
         try {
             // 分割文本并保存 sentences 到 JSON 文件
             val sentenceSegmenter = SentenceSegmenter()
             val sentences = sentenceSegmenter.segment(content)
             val sentencesJson = gson.toJson(sentences)
+            
+            // 根据类型选择不同的文件后缀
             
             // 保存 sentences 到 JSON 文件
             val fos = openFileOutput(fileName, MODE_PRIVATE)
@@ -677,8 +899,9 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     /**
      * 读取已录入的文件
      */
-    private fun loadFileFromInternalStorage(fileName: String?): List<SentenceSegmenter.SentenceInfo>? {
+    private fun loadFileFromInternalStorage(fileName: String?, isClipboard: Boolean = false): List<SentenceSegmenter.SentenceInfo>? {
         try {
+
             val fis = openFileInput(fileName)
             val reader = BufferedReader(InputStreamReader(fis))
             val stringBuilder = StringBuilder()
@@ -754,7 +977,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             val sentenceSegmenter = SentenceSegmenter()
             val combinedText = sentenceSegmenter.combineText(sentences)
             txtContent.text = combinedText
-            updateReadingText()
+            updateHighLightingText()
             
             // 设置分页
             setupPagination()
@@ -772,8 +995,8 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             // 遍历内部存储中的文件
             novelTitles!!.clear()
             for (file in internalDir.listFiles()) {
-                if (file.isFile && file.name.endsWith(FILE_SUFFIX)) {
-                    // 添加文件名（包含扩展名）
+                if (file.isFile && file.name.endsWith(FILE_SUFFIX) && !file.name.endsWith(CLIPBOARD_FILE_SUFFIX)) {
+                    // 只添加普通TXT文件的文件名（不包含粘贴板文件）
                     novelTitles!!.add(TitleViewNovelRecorded(file.name))
                 }
             }
@@ -928,28 +1151,28 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         }
     }
 
-    private fun updateReadingText(sentenceSegmenter: SentenceSegmenter, text: String) {
-        // 先尝试加载已保存的句子
-        val loadedSentences = loadSentences()
-        if (loadedSentences != null) {
-            // 如果有保存的句子，直接使用
-            val combinedText = sentenceSegmenter.combineText(loadedSentences)
-            txtContent.text = combinedText
-            currentSentenceIndex = 0
-            touchHandler.updateSentences(loadedSentences)
-            return
-        }
-
-        // 如果没有保存的句子，进行分割
-        val sentences = sentenceSegmenter.segment(text)
-        // 保存分割后的句子
-        saveSentences(sentences)
-        
-        val combinedText = sentenceSegmenter.combineText(sentences)
-        txtContent.text = combinedText
-        currentSentenceIndex = 0
-        touchHandler.updateSentences(sentences)
-    }
+//    private fun updateReadingText(sentenceSegmenter: SentenceSegmenter, text: String) {
+//        // 先尝试加载已保存的句子
+//        val loadedSentences = loadSentences()
+//        if (loadedSentences != null) {
+//            // 如果有保存的句子，直接使用
+//            val combinedText = sentenceSegmenter.combineText(loadedSentences)
+//            txtContent.text = combinedText
+//            currentSentenceIndex = 0
+//            touchHandler.updateSentences(loadedSentences)
+//            return
+//        }
+//
+//        // 如果没有保存的句子，进行分割
+//        val sentences = sentenceSegmenter.segment(text)
+//        // 保存分割后的句子
+//        saveSentences(sentences)
+//
+//        val combinedText = sentenceSegmenter.combineText(sentences)
+//        txtContent.text = combinedText
+//        currentSentenceIndex = 0
+//        touchHandler.updateSentences(sentences)
+//    }
 
     private fun setupPagination() {
         if (sentences == null) return
