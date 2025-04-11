@@ -19,6 +19,7 @@ import android.text.method.ScrollingMovementMethod
 import android.text.style.BackgroundColorSpan
 import android.util.Log
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -126,11 +127,6 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 初始化视图
-        initViews()
-        // 设置底部导航
-        setupBottomNavigation()
-
         // 初始化 ExoPlayer
         player = ExoPlayer.Builder(this).build()
         val dataSourceFactory = DefaultDataSourceFactory(this,
@@ -227,6 +223,11 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         setupPagination()
 
         initClipboardPage()
+
+        // 初始化视图
+        initViews()
+        // 设置底部导航
+        setupBottomNavigation()
     }
 
     private fun initViews() {
@@ -282,22 +283,37 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                 clipboardLayout.visibility = View.GONE
                 settingsLayout.visibility = View.GONE
                 topToolbar.visibility = View.VISIBLE
+                clearSentencesFromClipBoardPage()
+                hideInputKeyboard()
             }
             Page.CLIPBOARD -> {
                 readNovelPage.visibility = View.VISIBLE
                 clipboardLayout.visibility = View.VISIBLE
                 settingsLayout.visibility = View.GONE
-                topToolbar.visibility = View.GONE
+                topToolbar.visibility = View.INVISIBLE
                 // 初始化粘贴板页面
                 initClipboardPage()
+                hideInputKeyboard()
             }
             Page.SETTINGS -> {
                 readNovelPage.visibility = View.GONE
                 clipboardLayout.visibility = View.GONE
                 settingsLayout.visibility = View.VISIBLE
                 topToolbar.visibility = View.GONE
+                hideInputKeyboard()
             }
         }
+    }
+    private fun clearSentencesFromClipBoardPage(){
+        clearAllQueues()
+        sentences = null
+        txtContent.text = ""
+        updateHighLightingText()
+    }
+    private fun hideInputKeyboard(){
+        // 隐藏输入法键盘
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(editClipboard.windowToken, 0)
     }
 
     private fun saveCurrentPageState() {
@@ -346,6 +362,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         editClipboard = findViewById(R.id.editClipboard)
         btnModify = findViewById(R.id.btnModify)
         btnClose = findViewById(R.id.btnClose)
+        btnClose.visibility = View.GONE
         btnConfirm = findViewById(R.id.btnConfirm)
 
         // 设置按钮点击事件
@@ -355,15 +372,17 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             txtContent.visibility = View.GONE
             btnModify.visibility = View.GONE
             btnConfirm.visibility = View.VISIBLE
+            editClipboard.setText(txtContent.text)
         }
 
-        btnClose.setOnClickListener {
-            // 关闭粘贴板界面，返回阅读界面
-            clipboardLayout.visibility = View.GONE
-            // 清空编辑内容
-            editClipboard.setText("")
-            txtContent.text = ""
-        }
+//        btnClose.setOnClickListener {
+//            // 关闭粘贴板界面，返回阅读界面
+//            clipboardLayout.visibility = View.GONE
+//            // 清空编辑内容
+//            editClipboard.setText("")
+//            txtContent.text = ""
+//            hideInputKeyboard()
+//        }
 
         btnConfirm.setOnClickListener {
             // 保存当前编辑的内容
@@ -383,6 +402,8 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                 autoSaveClipboardContent()
                 loadSavedClipboardContent()
                 clearAllQueues()
+
+                hideInputKeyboard()
             }
         }
 
@@ -391,6 +412,9 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         txtContent.visibility = View.VISIBLE
         btnModify.visibility = View.VISIBLE
         btnConfirm.visibility = View.GONE
+
+        // 使用之前的clipboard文件
+        loadSavedClipboardContent()
     }
 
     private fun initSettingsPage() {
@@ -407,7 +431,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         if (content.isNotEmpty()) {
             // 生成时间戳文件名
             val timestamp = System.currentTimeMillis()
-            val fileName = "clipboard_$timestamp$CLIPBOARD_FILE_SUFFIX"
+            val fileName = "clipboard_$CLIPBOARD_FILE_SUFFIX"
             
             // 保存文件名到 SharedPreferences
             getSharedPreferences("clipboard_content", Context.MODE_PRIVATE)
@@ -972,6 +996,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
      */
     fun selectFromAlreadyReadNovels(fileName: String?) {
         val savedContent = loadFileFromInternalStorage(fileName)
+        clearAllQueues()
         if (savedContent != null) {
             sentences = savedContent
             val sentenceSegmenter = SentenceSegmenter()
