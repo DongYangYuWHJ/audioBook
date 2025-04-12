@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 public class SentenceSegmenter {
     // 配置参数
     private static final int MIN_LENGTH = 3;  // 最小句子长度
-    private static final int MAX_LENGTH = 50; // 最大句子长度
+    private static final int MAX_LENGTH = 30; // 最大句子长度
 
     // 中文标点
     private static final String CN_STRONG_SEPARATORS = "。！？";

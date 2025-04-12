@@ -121,7 +121,7 @@ class SettingsActivity : AppCompatActivity() {
         val models = arrayOf(
             getString(R.string.model_chinese) to "zh",
             getString(R.string.model_english) to "en",
-            getString(R.string.model_mix) to "mix"
+//            getString(R.string.model_mix) to "mix"
         )
 
         val adapter = ArrayAdapter(

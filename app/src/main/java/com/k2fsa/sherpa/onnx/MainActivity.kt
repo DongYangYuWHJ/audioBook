@@ -516,6 +516,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             kotlin.synchronized(audioIndexQueue) {
                 while (true) {
                     if(audioIndexQueue.size <= audioQueueRegularSize){
+                        //若超出index范围，停止循环
+                        if(currentSentenceIndex >= sentences!!.size){
+                            break
+                        }
                         val textStr = sentences!!.getOrNull(currentSentenceIndex)!!.text ?: break
                         if (textStr.isBlank()) {
                             currentSentenceIndex++
@@ -674,7 +678,8 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         dictDir = "vits-melo-tts-zh_en/dict"
 
         val preferences = getSharedPreferences("settings", Context.MODE_PRIVATE)
-        val preferenceModel = preferences.getString("selected_model", "en")
+        val preferenceModel = preferences.getString("selected_model", "zh")
+        Log.d("donghui_sherpa_onnx", "model: " + preferenceModel)
         if(preferenceModel == "en"){
             Log.d("donghuiModel", "yingwen")
             //coqui:
