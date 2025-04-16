@@ -84,7 +84,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
 //    private
     // 维护 index -> filename 的映射，限制最大大小
     private val audioIndexToFileMap = LinkedHashMap<Int, String>(audioQueueRegularSize * 4, 0.75f, true)
-    private val audioIndexQueue: Queue<Int> = LinkedList()
+    private val audioIndexQueue: LinkedList<Int> = LinkedList()
     private val dictionaryMaxSize = audioQueueRegularSize * 4
     private var retryCount = 0
     private val maxRetry = 50 // 最多重试 50 次（5 秒）
@@ -501,8 +501,21 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
 //        }
 //    }
 
+    private fun getSelectedSid(): Int {
+        return getSharedPreferences("settings", Context.MODE_PRIVATE)
+            .getInt("sid", 101)
+    }
+
     private fun onClickGenerate(index: Int) {
-        val sidInt = 0
+        val sidInt = getSelectedSid()
+        if (sidInt == null || sidInt < 0) {
+            Toast.makeText(
+                applicationContext,
+                "Please input a non-negative integer for speaker ID!",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
         val speedFloat = 1.0f
 
         currentSentenceIndex = index
@@ -515,7 +528,9 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         Thread {
             kotlin.synchronized(audioIndexQueue) {
                 while (true) {
-                    if(audioIndexQueue.size <= audioQueueRegularSize){
+                    Log.d("donghuiLoop", "in loop1")
+                    if((audioIndexQueue.size <= audioQueueRegularSize)){
+                        Log.d("donghuiLoop", "in loop2")
                         //若超出index范围，停止循环
                         if(currentSentenceIndex >= sentences!!.size){
                             break
@@ -585,7 +600,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             player?.setMediaSource(mediaSource)
             player?.prepare()
             player?.playWhenReady = true
-            player?.setPlaybackSpeed(0.85f)
+            player?.setPlaybackSpeed(1f)
 
             // 隐藏加载动画
             audioLoadingProgress.visibility = View.GONE
@@ -669,13 +684,13 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         dictDir = null
 
 
-        // Example 6
-        // vits-melo-tts-zh_en
-        // https://k2-fsa.github.io/sherpa/onnx/tts/pretrained_models/vits.html#vits-melo-tts-zh-en-chinese-english-1-speaker
-        modelDir = "vits-melo-tts-zh_en"
-        modelName = "model.onnx"
-        lexicon = "lexicon.txt"
-        dictDir = "vits-melo-tts-zh_en/dict"
+//        // Example 6
+//        // vits-melo-tts-zh_en
+//        // https://k2-fsa.github.io/sherpa/onnx/tts/pretrained_models/vits.html#vits-melo-tts-zh-en-chinese-english-1-speaker
+//        modelDir = "vits-melo-tts-zh_en"
+//        modelName = "model.onnx"
+//        lexicon = "lexicon.txt"
+//        dictDir = "vits-melo-tts-zh_en/dict"
 
         val preferences = getSharedPreferences("settings", Context.MODE_PRIVATE)
         val preferenceModel = preferences.getString("selected_model", "zh")
@@ -691,10 +706,29 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             // Example 6
             // vits-melo-tts-zh_en
             // https://k2-fsa.github.io/sherpa/onnx/tts/pretrained_models/vits.html#vits-melo-tts-zh-en-chinese-english-1-speaker
-            modelDir = "vits-melo-tts-zh_en"
-            modelName = "model.onnx"
-            lexicon = "lexicon.txt"
-            dictDir = "vits-melo-tts-zh_en/dict"
+//            modelDir = "vits-melo-tts-zh_en"
+//            modelName = "model.onnx"
+//            lexicon = "lexicon.txt"
+//            dictDir = "vits-melo-tts-zh_en/dict"
+
+            // Example 3:
+            // https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-icefall-zh-aishell3.tar.bz2
+//             modelDir = "vits-zh-aishell3"
+//             modelName = "vits-aishell3.onnx"
+//             ruleFars = modelDir + "/rule.far"
+//             lexicon = "lexicon.txt"
+
+//            modelDir = "vits-zh-hf-keqing"
+//            modelName = "keqing.onnx"
+//            lexicon = "lexicon.txt"
+//            dictDir = modelDir + "/dict"
+
+            // Example 4:
+            // https://k2-fsa.github.io/sherpa/onnx/tts/pretrained_models/vits.html#csukuangfj-vits-zh-hf-fanchen-c-chinese-187-speakers
+             modelDir = "vits-zh-hf-fanchen-C"
+             modelName = "vits-zh-hf-fanchen-C.onnx"
+             lexicon = "lexicon.txt"
+             dictDir = "vits-zh-hf-fanchen-C/dict"
         }
 
         // Example 1:
@@ -773,9 +807,18 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             val newDir = copyDataDir(dictDir!!)
             dictDir = "$newDir/$dictDir"
             //todo: 不知道这个是否是需要的？？？好像没有也无所谓？
-//            if (ruleFsts == null) {
-//                ruleFsts = "$modelDir/phone.fst,$modelDir/date.fst,$modelDir/number.fst"
-//            }
+            //需要的：要不然数字读不出来
+            if(modelDir == "vits-melo-tts-zh_en"){//"vits-melo-tts-zh_en""vits-zh-aishell3"
+                if (ruleFsts == null) {
+                    ruleFsts = "$modelDir/phone.fst,$modelDir/date.fst,$modelDir/number.fst"
+                }
+            }
+            if(modelDir == "vits-zh-hf-fanchen-C"){
+                if (ruleFsts == null) {
+                    Log.d("donghuiInitTTS", "fst loading")
+                    ruleFsts = "$modelDir/phone.fst,$modelDir/date.fst,$modelDir/number.fst"
+                }
+            }
         }
 
         val config = getOfflineTtsConfig(
@@ -1121,7 +1164,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         Thread {
             kotlin.synchronized(peededAudioQueueIndex){
                 while (readingStatus) {
-                    if (!sentences!!.isEmpty() && currentSentenceIndex < sentences!!.size && audioIndexQueue.size >= audioQueueRegularSize) {
+                    Log.d("donghuiLoop", "in loop3 " + audioIndexQueue.size + " " + sentences!!.size + " " + currentSentenceIndex)
+                    if (!sentences!!.isEmpty() && !audioIndexQueue.isEmpty() && currentSentenceIndex <= sentences!!.size &&
+                        (audioIndexQueue.size >= audioQueueRegularSize ||
+                                audioIndexQueue.last == sentences!!.size)) {
                         runOnUiThread {
                             onClickPlay()
                         }

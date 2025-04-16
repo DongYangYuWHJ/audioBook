@@ -8,8 +8,10 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.Spinner
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.textfield.TextInputEditText
 import java.util.*
 
 class SettingsActivity : AppCompatActivity() {
@@ -18,10 +20,19 @@ class SettingsActivity : AppCompatActivity() {
     private var tempLanguage: String = ""
     private var tempModel: String = ""
     private var hasChanges: Boolean = false
+    private lateinit var editTextSid: TextInputEditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
+
+        editTextSid = findViewById(R.id.editTextSid)
+
+        // 从 SharedPreferences 加载当前设置
+        val preferences = getSharedPreferences("settings", Context.MODE_PRIVATE)
+        val currentSid = preferences.getInt("sid", 101)
+        editTextSid.setText(currentSid.toString())
+
 
         languageSpinner = findViewById(R.id.languageSpinner)
         modelSpinner = findViewById(R.id.modelSpinner)
@@ -35,6 +46,13 @@ class SettingsActivity : AppCompatActivity() {
         setupModelSpinner()
         
         confirmButton.setOnClickListener {
+            // 直接保存当前值
+            val newSid = editTextSid.text.toString().toIntOrNull() ?: 101
+            getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .edit()
+                .putInt("sid", newSid)
+                .apply()
+            finish()
             if (hasChanges) {
                 // 保存语言设置
                 if (tempLanguage != LocaleHelper.getLanguage(this)) {
@@ -51,6 +69,7 @@ class SettingsActivity : AppCompatActivity() {
             } else {
                 finish()
             }
+            Toast.makeText(this, "设置已保存", Toast.LENGTH_SHORT).show()
         }
     }
 
