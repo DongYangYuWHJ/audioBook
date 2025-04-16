@@ -294,6 +294,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                 // 初始化粘贴板页面
                 initClipboardPage()
                 hideInputKeyboard()
+                clearSentencesFromClipBoardPage()
             }
             Page.SETTINGS -> {
                 readNovelPage.visibility = View.GONE
