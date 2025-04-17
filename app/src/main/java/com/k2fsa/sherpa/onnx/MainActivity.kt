@@ -506,6 +506,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         return getSharedPreferences("settings", Context.MODE_PRIVATE)
             .getInt("sid", 101)
     }
+    private fun getTTSSpeed(): Float {
+        return getSharedPreferences("settings", Context.MODE_PRIVATE)
+            .getFloat("speed", 1f)
+    }
 
     private fun onClickGenerate(index: Int) {
         val sidInt = getSelectedSid()
@@ -517,7 +521,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             ).show()
             return
         }
-        val speedFloat = 1.0f
+        val speedFloat = getTTSSpeed()
 
         currentSentenceIndex = index
         

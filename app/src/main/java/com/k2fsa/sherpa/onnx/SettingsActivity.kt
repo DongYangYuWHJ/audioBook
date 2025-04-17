@@ -7,7 +7,9 @@ import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.SeekBar
 import android.widget.Spinner
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -21,15 +23,30 @@ class SettingsActivity : AppCompatActivity() {
     private var tempModel: String = ""
     private var hasChanges: Boolean = false
     private lateinit var editTextSid: TextInputEditText
+    private lateinit var seekBarSpeed: SeekBar
+    private lateinit var textViewSpeed: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
 
+        seekBarSpeed = findViewById(R.id.seekBarSpeed)
+        textViewSpeed = findViewById(R.id.textViewSpeed)
+
+        // 从 SharedPreferences 加载当前设置
+        var preferences = getSharedPreferences("settings", Context.MODE_PRIVATE)
+        val currentSpeed = preferences.getFloat("speed", 1.0f)
+
+        // 设置当前值
+        val progress = ((currentSpeed - 0.2f) * 10).toInt()
+        seekBarSpeed.progress = progress
+        textViewSpeed.text = String.format("语音速度: %.1f", currentSpeed)
+
+
         editTextSid = findViewById(R.id.editTextSid)
 
         // 从 SharedPreferences 加载当前设置
-        val preferences = getSharedPreferences("settings", Context.MODE_PRIVATE)
+        preferences = getSharedPreferences("settings", Context.MODE_PRIVATE)
         val currentSid = preferences.getInt("sid", 101)
         editTextSid.setText(currentSid.toString())
 
@@ -51,6 +68,11 @@ class SettingsActivity : AppCompatActivity() {
             getSharedPreferences("settings", Context.MODE_PRIVATE)
                 .edit()
                 .putInt("sid", newSid)
+                .apply()
+            val speed = 0.2f + (seekBarSpeed.progress / 10.0f)
+            getSharedPreferences("settings", Context.MODE_PRIVATE)
+                .edit()
+                .putFloat("speed", speed)
                 .apply()
             finish()
             if (hasChanges) {
