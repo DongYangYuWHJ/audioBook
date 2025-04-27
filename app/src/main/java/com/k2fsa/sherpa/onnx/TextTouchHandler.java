@@ -113,7 +113,7 @@ public class TextTouchHandler implements GestureDetector.OnGestureListener, Gest
         SentenceSegmenter.SentenceInfo sentence = sentences.get(sentenceIndex);
         
         // 只清除当前高亮的句子
-        if (currentHighlightedIndex != -1) {
+        if (currentHighlightedIndex != -1 && currentHighlightedIndex < sentences.size()) {
             SentenceSegmenter.SentenceInfo oldSentence = sentences.get(currentHighlightedIndex);
             BackgroundColorSpan[] spans = spannable.getSpans(
                 oldSentence.startPos, 

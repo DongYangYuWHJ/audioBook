@@ -139,8 +139,11 @@
                 app:layout_constraintBottom_toTopOf="@id/bottom_toolbar">
 
                 <ScrollView
+                    android:id="@+id/txtContentScroll"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent">
+                    android:layout_height="match_parent"
+                    android:fillViewport="true"
+                    android:scrollbars="vertical">
 
                     <TextView
                         android:id="@+id/txtContent"

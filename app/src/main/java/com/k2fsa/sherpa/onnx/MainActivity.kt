@@ -24,6 +24,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -45,7 +46,6 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStreamReader
 import java.util.LinkedList
-import java.util.Queue
 
 const val TAG = "sherpa-onnx"
 
@@ -60,6 +60,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
 
     lateinit private var txtContent: TextView
+    lateinit private var txtContentScrollBar: ScrollView
     lateinit private var touchHandler: TextTouchHandler
     lateinit var novelTitles: ArrayList<TitleViewNovelRecorded>
     lateinit var adapter: Adapter_TitleViewNovelRecorded
@@ -70,7 +71,8 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
 
     val splitRegex: String = "[。！？,. \n]"
     private val PICK_TXT_FILE = 1 // 请求代码
-    private var sentences: List<SentenceSegmenter.SentenceInfo>? = null
+    private var sentencesForUI: List<SentenceSegmenter.SentenceInfo>? = null
+    private var sentencesForAudio: List<SentenceSegmenter.SentenceInfo>? = null
     var currentSentenceIndex: Int = 0
     private var readingStatus = false //true for reading now, false for not reading
 
@@ -177,9 +179,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         currentNovelTitle = findViewById(R.id.current_novel_title)
 
         txtContent = findViewById(R.id.txtContent)
+        txtContentScrollBar = findViewById(R.id.txtContentScroll)
         txtContent.setMovementMethod(ScrollingMovementMethod())
 
-        touchHandler = TextTouchHandler(this, txtContent, sentences)
+        touchHandler = TextTouchHandler(this, txtContent, sentencesForUI)
 
         touchHandler!!.attach()
         touchHandler!!.textTouchHandlerUpdateMainActivityCallBack(this)
@@ -208,11 +211,11 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             }
         }
 
-        txtContent.getViewTreeObserver().addOnScrollChangedListener {
-            val scrollY = txtContent.getScrollY() // 获取当前滚动位置
+        txtContentScrollBar.getViewTreeObserver().addOnScrollChangedListener {
+            val scrollY = txtContentScrollBar.getScrollY() // 获取当前滚动位置
             val novelTitle = currentNovelTitle.getText() as String
             saveScrollPosition(novelTitle, scrollY) // 保存滚动位置
-            Log.d("donghuiScroll", "check")
+            Log.d("donghuiScroll", "check " + scrollY)
         }
         novelTitles = ArrayList()
         setUpNovelTitles()
@@ -295,6 +298,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                 initClipboardPage()
                 hideInputKeyboard()
                 clearSentencesFromClipBoardPage()
+                loadSavedClipboardContent()
             }
             Page.SETTINGS -> {
                 readNovelPage.visibility = View.GONE
@@ -306,8 +310,8 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         }
     }
     private fun clearSentencesFromClipBoardPage(){
-        clearAllQueues()
-        sentences = null
+//        clearAllQueues()
+        sentencesForUI = null
         txtContent.text = ""
         updateHighLightingText()
     }
@@ -452,13 +456,13 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             
         if (fileName?.isNotEmpty() == true) {
             // 使用文件名加载文件内容
-            sentences = loadFileFromInternalStorage(fileName)
+            sentencesForUI = loadFileFromInternalStorage(fileName)
             Log.d("donghuiLoadClip", "成功?"+fileName)
-            if (sentences != null) {
-                Log.d("donghuiLoadClip", "成功捏"+ sentences!!.get(0).text)
+            if (sentencesForUI != null) {
+                Log.d("donghuiLoadClip", "成功捏"+ sentencesForUI!!.get(0).text)
                 // 更新显示
                 val sentenceSegmenter = SentenceSegmenter()
-                val combinedText = sentenceSegmenter.combineText(sentences!!)
+                val combinedText = sentenceSegmenter.combineText(sentencesForUI!!)
                 txtContent.text = combinedText
                 updateHighLightingText()
             }
@@ -537,10 +541,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                     if((audioIndexQueue.size <= audioQueueRegularSize)){
                         Log.d("donghuiLoop", "in loop2")
                         //若超出index范围，停止循环
-                        if(currentSentenceIndex >= sentences!!.size){
+                        if(currentSentenceIndex >= sentencesForAudio!!.size){
                             break
                         }
-                        val textStr = sentences!!.getOrNull(currentSentenceIndex)!!.text ?: break
+                        val textStr = sentencesForAudio!!.getOrNull(currentSentenceIndex)!!.text ?: break
                         if (textStr.isBlank()) {
                             currentSentenceIndex++
                             continue
@@ -613,7 +617,9 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             if(touchHandler.onLongPressFirstSentence){
                 touchHandler.onLongPressFirstSentence = false
             }else{
-                touchHandler.highlightSentence(peededAudioQueueIndex!!)
+                if(sentencesForUI != null && sentencesForAudio != null && sentencesForUI == sentencesForAudio){
+                    touchHandler.highlightSentence(peededAudioQueueIndex!!)
+                }
             }
         }
     }
@@ -944,7 +950,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         
         currentSentenceIndex = 0
         Log.d("DonghuiLoadClip", "文本准备修改位置1")
-        touchHandler.updateSentences(sentences)
+        touchHandler.updateSentences(sentencesForUI)
         Log.d("DonghuiLoadClip", "文本准备修改位置2")
     }
 
@@ -1051,9 +1057,9 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         val savedContent = loadFileFromInternalStorage(fileName)
         clearAllQueues()
         if (savedContent != null) {
-            sentences = savedContent
+            sentencesForUI = savedContent
             val sentenceSegmenter = SentenceSegmenter()
-            val combinedText = sentenceSegmenter.combineText(sentences)
+            val combinedText = sentenceSegmenter.combineText(sentencesForUI)
             txtContent.text = combinedText
             updateHighLightingText()
             
@@ -1087,7 +1093,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         // 调用 MainActivity 的其他方法
         alreadyInputNovelButtonClicker(fileName)
         currentNovelTitle!!.text = fileName
-        restoreScrollPosition(fileName, txtContent!!)
+        restoreScrollPosition(fileName, txtContentScrollBar!!)
         restoreAudioRelated(fileName)
         currentNovelTitle!!.visibility = View.VISIBLE
         Log.d("donghuiTitleNew", "" + currentNovelTitle!!.visibility)
@@ -1101,10 +1107,11 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         editor.apply()
     }
 
-    private fun restoreScrollPosition(fileName: String, textView: TextView) {
+    private fun restoreScrollPosition(fileName: String, View: View) {
         val preferences = getSharedPreferences("ReadingHistory", MODE_PRIVATE)
         val scrollY = preferences.getInt(fileName + scrollPosition, 0) // 默认位置为 0
-        textView.post { textView.scrollTo(0, scrollY) } // 滚动到指定位置
+        View.post { View.scrollTo(0, scrollY) } // 滚动到指定位置
+        Log.d("donghuiScroll","restore to: " + scrollY)
     }
 
     private fun restoreAudioRelated(fileName: String) {
@@ -1153,6 +1160,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     }
 
     override fun ttsReadWhenLongPress(index: Int) {
+        sentencesForAudio = sentencesForUI
         // 清空所有队列和状态
         clearAllQueues()
         
@@ -1169,10 +1177,10 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         Thread {
             kotlin.synchronized(peededAudioQueueIndex){
                 while (readingStatus) {
-                    Log.d("donghuiLoop", "in loop3 " + audioIndexQueue.size + " " + sentences!!.size + " " + currentSentenceIndex)
-                    if (!sentences!!.isEmpty() && !audioIndexQueue.isEmpty() && currentSentenceIndex <= sentences!!.size &&
+                    Log.d("donghuiLoop", "in loop3 " + audioIndexQueue.size + " " + sentencesForAudio!!.size + " " + currentSentenceIndex)
+                    if (!sentencesForAudio!!.isEmpty() && !audioIndexQueue.isEmpty() && currentSentenceIndex <= sentencesForAudio!!.size &&
                         (audioIndexQueue.size >= audioQueueRegularSize ||
-                                audioIndexQueue.last == sentences!!.size)) {
+                                audioIndexQueue.last == sentencesForAudio!!.size)) {
                         runOnUiThread {
                             onClickPlay()
                         }
@@ -1256,11 +1264,11 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
 //    }
 
     private fun setupPagination() {
-        if (sentences == null) return
+        if (sentencesForUI == null) return
         
         // 计算总页数
-        totalPages = (sentences!!.size + sentencesPerPage - 1) / sentencesPerPage
-        Log.d("Pagination", "Total sentences: ${sentences!!.size}, Total pages: $totalPages")
+        totalPages = (sentencesForUI!!.size + sentencesPerPage - 1) / sentencesPerPage
+        Log.d("Pagination", "Total sentences: ${sentencesForUI!!.size}, Total pages: $totalPages")
         
         // 设置滚动监听
         txtContent.setOnScrollChangeListener { v, scrollX, scrollY, oldScrollX, oldScrollY ->
@@ -1285,15 +1293,15 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     }
     
     private fun loadPage(page: Int) {
-        if (page < 0 || page >= totalPages || isLoadingPage || sentences == null) return
+        if (page < 0 || page >= totalPages || isLoadingPage || sentencesForUI == null) return
         
         isLoadingPage = true
         
         val startIndex = page * sentencesPerPage
-        val endIndex = minOf(startIndex + sentencesPerPage, sentences!!.size)
+        val endIndex = minOf(startIndex + sentencesPerPage, sentencesForUI!!.size)
         
         // 获取当前页的句子
-        val pageSentences = sentences!!.subList(startIndex, endIndex)
+        val pageSentences = sentencesForUI!!.subList(startIndex, endIndex)
         
         // 组合当前页的文本
         val sentenceSegmenter = SentenceSegmenter()
