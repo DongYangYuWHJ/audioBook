@@ -12,6 +12,11 @@
     <string name="resume">继续</string>
     <string name="select_txt_file">选择TXT文件</string>
     <string name="loading_audio">音频加载中...</string>
+    <string name="txt_file">txt文件</string>
+    <string name="clipboard">粘贴板</string>
+    <string name="clipboard_edit">修改</string>
+    <string name="clipboard_confirm">确认</string>
+    <string name="setting">设置</string>
     
     <!-- Error Messages -->
     <string name="error_file_not_found">文件未找到</string>
@@ -21,7 +26,7 @@
     <!-- Settings -->
     <string name="settings">设置</string>
     <string name="language">语言</string>
-    <string name="english">英文</string>
+    <string name="english">English</string>
     <string name="chinese">中文</string>
     <string name="model">模型</string>
     <string name="model_chinese">中文模型</string>
@@ -32,4 +37,6 @@
     <string name="save_changes_prompt">是否保存更改？</string>
     <string name="save">保存</string>
     <string name="discard">放弃</string>
+    <string name="speaking_speed">语音速度: %.1f</string>
+    <string name="speaker_id">说话人ID"</string>
 </resources> 

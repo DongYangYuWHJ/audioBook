@@ -12,6 +12,11 @@
     <string name="resume">Resume</string>
     <string name="select_txt_file">Select TXT File</string>
     <string name="loading_audio">Loading audio...</string>
+    <string name="txt_file">txt file</string>
+    <string name="clipboard">clipboard</string>
+    <string name="clipboard_edit">edit</string>
+    <string name="clipboard_confirm">confirm</string>
+    <string name="setting">setting</string>
     
     <!-- Error Messages -->
     <string name="error_file_not_found">File not found</string>
@@ -22,7 +27,7 @@
     <string name="settings">Settings</string>
     <string name="language">Language</string>
     <string name="english">English</string>
-    <string name="chinese">Chinese</string>
+    <string name="chinese">中文</string>
     <string name="model">Model</string>
     <string name="model_chinese">Chinese Model</string>
     <string name="model_english">English Model</string>
@@ -32,4 +37,6 @@
     <string name="save_changes_prompt">Do you want to save your changes?</string>
     <string name="save">Save</string>
     <string name="discard">Discard</string>
+    <string name="speaking_speed">Speaking speed: %.1f</string>
+    <string name="speaker_id">Speaker ID"</string>
 </resources>

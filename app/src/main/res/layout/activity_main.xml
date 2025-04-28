@@ -245,7 +245,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginEnd="4dp"
-                    android:text="修改" />
+                    android:text="@string/clipboard_edit" />
 
                 <Button
                     android:id="@+id/btnClose"
@@ -260,7 +260,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="确认" />
+                    android:text="@string/clipboard_confirm" />
 
             </LinearLayout>
 

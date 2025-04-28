@@ -3,15 +3,15 @@
     <item
         android:id="@+id/navigation_txt"
         android:icon="@drawable/ic_txt_file"
-        android:title="TXT文件" />
+        android:title="@string/txt_file" />
 
     <item
         android:id="@+id/navigation_clipboard"
         android:icon="@drawable/ic_clipboard"
-        android:title="粘贴板" />
+        android:title="@string/clipboard" />
 
     <item
         android:id="@+id/navigation_settings"
         android:icon="@drawable/ic_settings"
-        android:title="设置" />
+        android:title="@string/settings" />
 </menu> 

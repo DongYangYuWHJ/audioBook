@@ -40,8 +40,16 @@ class SettingsActivity : AppCompatActivity() {
         // 设置当前值
         val progress = ((currentSpeed - 0.2f) * 10).toInt()
         seekBarSpeed.progress = progress
-        textViewSpeed.text = String.format("语音速度: %.1f", currentSpeed)
+        textViewSpeed.text = getString(R.string.speaking_speed, currentSpeed)
 
+        seekBarSpeed.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val speed = 0.2f + (progress / 10.0f)
+                textViewSpeed.text = getString(R.string.speaking_speed, speed)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
 
         editTextSid = findViewById(R.id.editTextSid)
 

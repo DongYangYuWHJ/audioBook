@@ -82,7 +82,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:hint="Speaker ID">
+                android:hint="@string/speaker_id">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/editTextSid"
@@ -103,7 +103,7 @@
                     android:id="@+id/textViewSpeed"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="语音速度: 1.0"
+                    android:text="@string/speaking_speed"
                     android:textSize="16sp"
                     android:gravity="center"/>
 
