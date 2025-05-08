@@ -32,11 +32,14 @@
     <string name="model_chinese">Chinese Model</string>
     <string name="model_english">English Model</string>
     <string name="model_mix">Mixed Model</string>
+    <string name="model_melo">Melo Chinese Model</string>
     <string name="confirm">Confirm</string>
     <string name="unsaved_changes">Unsaved Changes</string>
     <string name="save_changes_prompt">Do you want to save your changes?</string>
     <string name="save">Save</string>
     <string name="discard">Discard</string>
     <string name="speaking_speed">Speaking speed: %.1f</string>
-    <string name="speaker_id">Speaker ID"</string>
+    <string name="speaker_id">Speaker ID</string>
+    <string name="sid_hint_zh">Speaker ID (0-186)</string>
+    <string name="sid_hint_other">Speaker ID (0 only)</string>
 </resources>

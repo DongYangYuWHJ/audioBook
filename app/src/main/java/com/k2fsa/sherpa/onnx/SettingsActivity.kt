@@ -58,6 +58,8 @@ class SettingsActivity : AppCompatActivity() {
         val currentSid = preferences.getInt("sid", 101)
         editTextSid.setText(currentSid.toString())
 
+        // 初始化SID提示
+        updateSidHint(getSelectedModel())
 
         languageSpinner = findViewById(R.id.languageSpinner)
         modelSpinner = findViewById(R.id.modelSpinner)
@@ -170,7 +172,8 @@ class SettingsActivity : AppCompatActivity() {
         val models = arrayOf(
             getString(R.string.model_chinese) to "zh",
             getString(R.string.model_english) to "en",
-//            getString(R.string.model_mix) to "mix"
+//            getString(R.string.model_mix) to "mix",
+            getString(R.string.model_melo) to "melo"
         )
 
         val adapter = ArrayAdapter(
@@ -195,11 +198,31 @@ class SettingsActivity : AppCompatActivity() {
                     tempModel = selectedModel
                     hasChanges = true
                 }
+                // 更新SID输入框的提示
+                updateSidHint(selectedModel)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {
                 // Do nothing
             }
+        }
+    }
+
+    private fun updateSidHint(model: String) {
+        val hintResId = if (model == "zh") {
+            R.string.sid_hint_zh
+        } else {
+            R.string.sid_hint_other
+        }
+        editTextSid.hint = getString(hintResId)
+        
+        // 如果当前SID值不符合要求，则重置为0
+        val currentSid = editTextSid.text.toString().toIntOrNull() ?: 0
+        if (model != "zh" && currentSid != 0) {
+            editTextSid.setText("0")
+        }
+        if(model == "zh" && (currentSid < 0 || currentSid > 186)){
+            editTextSid.setText("0")
         }
     }
 

@@ -712,7 +712,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             modelDir = "vits-coqui-en-ljspeech"
             modelName = "model.onnx"
             dataDir = "vits-coqui-en-ljspeech/espeak-ng-data"
-        }else{
+        }else if(preferenceModel == "zh"){
             Log.d("donghuiModel", "中文")
             // Example 6
             // vits-melo-tts-zh_en
@@ -740,6 +740,11 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
              modelName = "vits-zh-hf-fanchen-C.onnx"
              lexicon = "lexicon.txt"
              dictDir = "vits-zh-hf-fanchen-C/dict"
+        }else if(preferenceModel == "melo"){
+            modelDir = "vits-melo-tts-zh_en"
+            modelName = "model.onnx"
+            lexicon = "lexicon.txt"
+            dictDir = "vits-melo-tts-zh_en/dict"
         }
 
         // Example 1:
