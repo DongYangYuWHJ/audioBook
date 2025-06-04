@@ -27,6 +27,7 @@ import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -124,6 +125,8 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
     private lateinit var btnClose: Button
     private lateinit var btnConfirm: Button
 
+    private lateinit var currVisualPage: Page
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -213,15 +216,22 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
 
         txtContentScrollBar.getViewTreeObserver().addOnScrollChangedListener {
             val scrollY = txtContentScrollBar.getScrollY() // 获取当前滚动位置
-            val novelTitle = currentNovelTitle.getText() as String
-            saveScrollPosition(novelTitle, scrollY) // 保存滚动位置
-            Log.d("donghuiScroll", "check " + scrollY)
+
+            if(currVisualPage == Page.TXT){
+                val novelTitle = currentNovelTitle.getText() as String
+                saveScrollPosition(novelTitle, scrollY) // 保存滚动位置
+                Log.d("donghuiScroll", "check " + scrollY + " " + novelTitle.length)
+            }else if(currVisualPage == Page.CLIPBOARD){
+                val fileName = getSharedPreferences("clipboard_content", Context.MODE_PRIVATE).getString("current_filename", "")
+                Log.d("donghuiScroll", "check " + scrollY + " " + fileName)
+            }
         }
         novelTitles = ArrayList()
         setUpNovelTitles()
         adapter = Adapter_TitleViewNovelRecorded(this, novelTitles, this)
         recyclerView.setAdapter(adapter)
         recyclerView.setLayoutManager(LinearLayoutManager(this))
+        currVisualPage = Page.TXT
 
         setupPagination()
 
@@ -282,6 +292,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         // 切换页面显示
         when (page) {
             Page.TXT -> {
+                currVisualPage = Page.TXT
                 readNovelPage.visibility = View.VISIBLE
                 clipboardLayout.visibility = View.GONE
                 settingsLayout.visibility = View.GONE
@@ -290,6 +301,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                 hideInputKeyboard()
             }
             Page.CLIPBOARD -> {
+                currVisualPage = Page.CLIPBOARD
                 readNovelPage.visibility = View.VISIBLE
                 clipboardLayout.visibility = View.VISIBLE
                 settingsLayout.visibility = View.GONE
@@ -453,7 +465,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
         // 从 SharedPreferences 获取文件名
         val fileName = getSharedPreferences("clipboard_content", Context.MODE_PRIVATE)
             .getString("current_filename", "")
-            
+
         if (fileName?.isNotEmpty() == true) {
             // 使用文件名加载文件内容
             sentencesForUI = loadFileFromInternalStorage(fileName)
@@ -465,6 +477,7 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
                 val combinedText = sentenceSegmenter.combineText(sentencesForUI!!)
                 txtContent.text = combinedText
                 updateHighLightingText()
+                restoreScrollPosition(fileName, txtContentScrollBar!!)
             }
         }
     }
@@ -1347,5 +1360,48 @@ class MainActivity : AppCompatActivity(), MainActivityCallback {
             currentPage--
             loadPage(currentPage)
         }
+    }
+
+    // 在 MainActivity 类中添加
+    private fun showDeleteDialog(fileName: String) {
+        AlertDialog.Builder(this)
+            .setTitle("删除确认")
+            .setMessage("确定要删除《${fileName.removeSuffix(FILE_SUFFIX)}》吗？")
+            .setPositiveButton("确定") { _, _ ->
+                deleteNovel(fileName)
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun deleteNovel(fileName: String) {
+        try {
+            // 删除文件
+            val file = File(filesDir, fileName)
+            if (file.exists()) {
+                file.delete()
+            }
+
+            // 删除相关的阅读历史
+            val preferences = getSharedPreferences("ReadingHistory", MODE_PRIVATE)
+            preferences.edit().apply {
+                remove(fileName + scrollPosition)
+                remove(fileName + audioIndex)
+                apply()
+            }
+
+            // 更新列表
+            setUpNovelTitles()
+            adapter.updateData(novelTitles)
+
+            Toast.makeText(this, "删除成功", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "删除失败: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // 在 MainActivity 中实现新的回调方法
+    override fun onButtonLongClick(fileName: String) {
+        showDeleteDialog(fileName)
     }
 }

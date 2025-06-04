@@ -85,6 +85,14 @@ public class Adapter_TitleViewNovelRecorded extends
                     listener.onButtonClick(fileName);
                 }
             });
+
+            // 设置长按事件
+            title.setOnLongClickListener(v -> {
+                if (listener != null) {
+                    listener.onButtonLongClick(fileName);
+                }
+                return true;
+            });
         }
     }
 }
